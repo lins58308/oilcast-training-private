@@ -19,6 +19,17 @@ public final class CloudContractTest {
         Path root=Path.of(args[0]),out=root.resolve("output");base=new JSONObject(Files.readString(out.resolve("model.json")));manifest=new JSONObject(Files.readString(out.resolve("manifest.json")));
         KeyPairGenerator generator=KeyPairGenerator.getInstance("RSA");generator.initialize(2048);KeyPair pair=generator.generateKeyPair();privateKey=pair.getPrivate();publicKey=pair.getPublic();
         JSONObject result=validate(base,null,now,true);ok(result.getJSONObject("model").getString("algorithm").equals(MultiLearner.VERSION),"verified cloud package uses App algorithm");
+        JSONObject cloudAccuracy=result.getJSONObject("cloudAccuracy");
+        ok(cloudAccuracy.getJSONArray("perFuel").length()==4,"cloud accuracy summarizes all four fuels");
+        ok(cloudAccuracy.getJSONArray("issued").length()==1,"cloud trainer records its forecast once");
+        JSONObject invalidAccuracy=new JSONObject(base.toString());
+        invalidAccuracy.getJSONObject("cloudAccuracy").getJSONArray("issued").getJSONObject(0)
+            .getJSONArray("predicted").put(0,9999);
+        rejects(()->validate(invalidAccuracy,null,now,true),"signed but invalid cloud accuracy prices are rejected");
+        JSONObject privateAccuracy=new JSONObject(base.toString());
+        privateAccuracy.getJSONObject("cloudAccuracy").getJSONArray("issued").getJSONObject(0)
+            .put("ledger",new JSONObject().put("amount",123));
+        rejects(()->validate(privateAccuracy,null,now,true),"private bill data cannot be hidden in cloud accuracy history");
         rejects(()->validate(base,null,now,false),"demo cannot install in production");
         rejects(()->validate(base,null,now.plusSeconds(36*3600+1),true),"stale model rejected");
         rejects(()->validate(base,null,now.minusSeconds(301),true),"future clock skew rejected");

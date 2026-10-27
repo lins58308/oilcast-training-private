@@ -27,7 +27,7 @@ public final class PublicHttp {
     public static String read(String link)throws Exception{
         for(int attempt=0;;attempt++){
             try{return readOnce(link);}
-            catch(SocketTimeoutException|EOFException|RetryableException e){
+            catch(SocketTimeoutException|EOFException|RetryableException|SocketException e){
                 Thread owner=OWNER.get();if(attempt>=1||Thread.currentThread().isInterrupted()||(owner!=null&&owner.isInterrupted()))throw e;
             }
         }
