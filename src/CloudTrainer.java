@@ -45,13 +45,16 @@ public final class CloudTrainer {
         ContextData context=new ContextData(outside);int revision=old==null?1:old.getJSONObject("model").getInt("revision")+1;
         String hash=ContextData.sha(OilData.fingerprint(weekly)+context.fingerprint()+day);
         long started=System.nanoTime();JSONObject model=MultiLearner.train(weekly,context,revision,hash,asOf,progress);long millis=(System.nanoTime()-started)/1_000_000;
-        JSONObject payload=new JSONObject().put("schema",1).put("source",OilData.SOURCE).put("cpcSyncedAt",cpcSynced.toString()).put("rows",OilData.json(rows)).put("model",model).put("multisource",outside).put("sourceStates",ContextData.catalog(outside.optJSONObject("sources")));
+        JSONObject priorAccuracy=old==null?null:old.optJSONObject("cloudAccuracy");
+        if(priorAccuracy==null&&old!=null)priorAccuracy=CloudAccuracy.update(null,old.getJSONObject("model"),rows,asOf);
+        JSONObject cloudAccuracy=CloudAccuracy.update(priorAccuracy,model,rows,asOf);
+        JSONObject payload=new JSONObject().put("schema",1).put("source",OilData.SOURCE).put("cpcSyncedAt",cpcSynced.toString()).put("rows",OilData.json(rows)).put("model",model).put("multisource",outside).put("sourceStates",ContextData.catalog(outside.optJSONObject("sources"))).put("cloudAccuracy",cloudAccuracy);
         byte[] bytes=payload.toString().getBytes(StandardCharsets.UTF_8);if(bytes.length>CloudModelPackage.MAX_BYTES)throw new IllegalArgumentException("Model package exceeds limit");
         JSONObject manifest=new JSONObject().put("schema",1).put("demo",!live).put("algorithm",MultiLearner.VERSION).put("revision",revision).put("trainedAt",asOf.toString()).put("dataThrough",model.getString("trainedThrough")).put("targetDate",model.getString("targetDate")).put("payloadSha256",CloudModelPackage.sha(bytes)).put("payloadBytes",bytes.length).put("payloadFile","model.json");
         if(args.length>6&&!args[6].isEmpty())manifest.put("payloadUrl",args[6]);
         Files.write(out.resolve("model.json"),bytes);Files.writeString(out.resolve("manifest.json"),manifest.toString(2));
         if(!keyPath.isEmpty())Files.writeString(out.resolve("envelope.json"),CloudModelPackage.envelope(manifest,CloudModelPackage.privateKey(Files.readString(Path.of(keyPath))),"oilcast-model-v1").toString(2));
-        JSONObject checkpoint=new JSONObject().put("cloudStateSchema",1).put("rows",OilData.json(rows)).put("multisource",outside).put("model",model);
+        JSONObject checkpoint=new JSONObject().put("cloudStateSchema",1).put("rows",OilData.json(rows)).put("multisource",outside).put("model",model).put("cloudAccuracy",cloudAccuracy);
         Files.writeString(out.resolve("checkpoint.json"),checkpoint.toString());
         Files.writeString(out.resolve("training-status.json"),new JSONObject().put("outcome","running").put("phase","publish").put("percent",95).put("updatedAt",Instant.now().toString()).toString());
         JSONObject result=new JSONObject().put("algorithm",MultiLearner.VERSION).put("revision",revision).put("demo",!live).put("published",false).put("appConnected",false).put("cloudExecutionVerified",false).put("cpuTrainMillis",millis).put("modelBytes",bytes.length).put("weeklyRows",weekly.size()).put("newsRows",context.newsSize()).put("marketRows",context.marketSize()).put("targetDate",model.getString("targetDate"));

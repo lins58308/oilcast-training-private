@@ -56,6 +56,7 @@ public final class CloudModelPackage {
         JSONArray articles=model.getJSONObject("context").getJSONArray("articles");require(articles.length()<=5000,"Too many news references");
         for(int i=0;i<articles.length();i++)require(ContextData.allowedLink(articles.getJSONObject(i).getString("url")),"Unsafe news reference");
         require(!data.has("ledger")&&!data.has("issued")&&!data.has("authorization"),"Personal records or remote accuracy history must not be imported");
+        if(data.has("cloudAccuracy"))validateAccuracy(data.getJSONObject("cloudAccuracy"));
         JSONObject outside=data.getJSONObject("multisource");validateSources(outside);
         ContextData context=new ContextData(outside);double[] external=context.snapshot(trained).values;
         for(int f=0;f<4;f++){
@@ -77,6 +78,30 @@ public final class CloudModelPackage {
             Instant.parse(row.getString("publishedAt"));Instant.parse(row.getString("availableAt"));JSONArray topics=row.getJSONArray("topics");require(topics.length()<=6,"Invalid news classification");for(int j=0;j<topics.length();j++)require(topics.getInt(j)>=0&&topics.getInt(j)<6,"Invalid news classification");
         }
         for(int i=0;i<coverage.length();i++){JSONObject row=coverage.getJSONObject(i);require(!LocalDate.parse(row.getString("from")).isAfter(LocalDate.parse(row.getString("to"))),"Invalid coverage interval");}
+    }
+    private static void validateAccuracy(JSONObject accuracy)throws Exception{
+        require(accuracy.getInt("schema")==1,"Unsupported cloud accuracy format");
+        Instant.parse(accuracy.getString("updatedAt"));
+        JSONArray issued=accuracy.getJSONArray("issued"),summary=accuracy.getJSONArray("perFuel");
+        require(issued.length()<=260&&summary.length()==4,"Cloud accuracy history is too large");
+        for(int i=0;i<issued.length();i++){
+            JSONObject item=issued.getJSONObject(i);
+            require("unified".equals(item.getString("mode"))&&!item.has("ledger")&&!item.has("authorization"),"Untrusted accuracy history");
+            LocalDate.parse(item.getString("targetDate"));Instant.parse(item.getString("issuedAt"));
+            require(item.getInt("revision")>0,"Invalid accuracy revision");
+            for(String field:new String[]{"predicted","basePrices"}){
+                JSONArray values=item.getJSONArray(field);require(values.length()==4,"Invalid accuracy prices");
+                for(int f=0;f<4;f++)require(Double.isFinite(values.getDouble(f))&&values.getDouble(f)>=5&&values.getDouble(f)<=100,"Invalid accuracy price");
+            }
+            if(item.has("actual")){
+                JSONArray values=item.getJSONArray("actual");require(values.length()==4,"Invalid actual prices");
+                for(int f=0;f<4;f++)require(Double.isFinite(values.getDouble(f))&&values.getDouble(f)>=5&&values.getDouble(f)<=100,"Invalid actual price");
+            }
+        }
+        for(int f=0;f<4;f++){
+            JSONObject row=summary.getJSONObject(f);require(row.getInt("fuel")==f&&row.getInt("count")>=0,"Invalid accuracy summary");
+            for(String field:new String[]{"mae","bias","within01","direction"})if(!row.isNull(field))require(Double.isFinite(row.getDouble(field))&&Math.abs(row.getDouble(field))<=100,"Invalid accuracy metric");
+        }
     }
     public static String payloadUrl(JSONObject manifest,String repository)throws Exception{
         require(repository.matches("[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+"),"Invalid repository");

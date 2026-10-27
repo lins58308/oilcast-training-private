@@ -79,13 +79,13 @@ def restore_checkpoint(api,latest,output):
         # Never silently reset the revision/history after a checkpoint upload failure.
         data=api.asset(latest,'model.json');payload=json.loads(data)
         if 'multisource' not in payload or any(k in payload for k in ['ledger','authorization','issued']):raise RuntimeError('Latest public model cannot restore training data')
-        output.write_text(json.dumps({'cloudStateSchema':1,'rows':payload['rows'],'multisource':payload['multisource'],'model':payload['model']}))
+        output.write_text(json.dumps({'cloudStateSchema':1,'rows':payload['rows'],'multisource':payload['multisource'],'model':payload['model'],'cloudAccuracy':payload.get('cloudAccuracy')}))
     else:return
     # A model may have been published immediately before a checkpoint update failed.
     if latest:
         payload=json.loads(api.asset(latest,'model.json'));old=json.loads(output.read_text())
         if payload['model']['trainedAt']>old['model']['trainedAt']:
-            output.write_text(json.dumps({'cloudStateSchema':1,'rows':payload['rows'],'multisource':payload['multisource'],'model':payload['model']}))
+            output.write_text(json.dumps({'cloudStateSchema':1,'rows':payload['rows'],'multisource':payload['multisource'],'model':payload['model'],'cloudAccuracy':payload.get('cloudAccuracy')}))
 
 def publish(api,tag,folder):
     envelope=json.loads((folder/'envelope.json').read_text());manifest=json.loads(base64.b64decode(envelope['manifestBase64']))
