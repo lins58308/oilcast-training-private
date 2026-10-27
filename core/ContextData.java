@@ -172,6 +172,48 @@ public final class ContextData {
         }
         if(out.length()<100)throw new IOException("FRED 歷史行情不足");return out;
     }
+    /** FRED occasionally times out on a combined three-series graph export.
+     * Reassemble three individually downloaded *official* series by date; never
+     * guess missing observations or silently drop either oil/exchange series. */
+    public static String mergeFredSeries(String[] csvs)throws Exception{
+        String[] ids={"DCOILBRENTEU","DCOILWTICO","DEXTAUS"};
+        if(csvs.length!=ids.length)throw new IOException("FRED 備援序列數量不正確");
+        TreeMap<LocalDate,String[]> joined=new TreeMap<>();
+        for(int i=0;i<ids.length;i++){
+            String[] lines=csvs[i].replace("\ufeff","").split("\\r?\\n");
+            if(lines.length<100||!lines[0].equals("observation_date,"+ids[i]))throw new IOException("FRED "+ids[i]+" 欄位格式錯誤");
+            for(int j=1;j<lines.length;j++){
+                String[] cols=lines[j].split(",",-1);
+                if(cols.length!=2)throw new IOException("FRED "+ids[i]+" 行情欄位不完整");
+                LocalDate date=LocalDate.parse(cols[0]);
+                if(date.isBefore(LocalDate.of(2019,1,1)))continue;
+                if(!cols[1].isEmpty()&&!cols[1].equals(".")&&!cols[1].matches("-?[0-9]+(\\.[0-9]+)?"))throw new IOException("FRED "+ids[i]+" 行情數值格式異常");
+                String[] values=joined.computeIfAbsent(date,k->new String[]{".",".","."});
+                values[i]=cols[1].isEmpty()?".":cols[1];
+            }
+        }
+        if(joined.size()<100)throw new IOException("FRED 備援歷史行情不足");
+        StringBuilder csv=new StringBuilder("observation_date,DCOILBRENTEU,DCOILWTICO,DEXTAUS\n");
+        for(Map.Entry<LocalDate,String[]> entry:joined.entrySet()){
+            String[] values=entry.getValue();
+            csv.append(entry.getKey()).append(',').append(values[0]).append(',').append(values[1]).append(',').append(values[2]).append('\n');
+        }
+        return csv.toString();
+    }
+    public static JSONArray fetchMarket(Instant seen)throws Exception{
+        try{return parseMarket(download(MARKET_URL),seen);}
+        catch(Exception primary){
+            if(Thread.currentThread().isInterrupted())throw primary;
+            try{
+                String[] ids={"DCOILBRENTEU","DCOILWTICO","DEXTAUS"},files=new String[3];
+                for(int i=0;i<ids.length;i++)files[i]=download("https://fred.stlouisfed.org/graph/fredgraph.csv?id="+ids[i]+"&cosd=2019-01-01");
+                return parseMarket(mergeFredSeries(files),seen);
+            }catch(Exception backup){
+                IOException error=new IOException("FRED 合併下載及三序列備援均失敗（"+primary.getClass().getSimpleName()+" / "+backup.getClass().getSimpleName()+"）",backup);
+                error.addSuppressed(primary);throw error;
+            }
+        }
+    }
     /** Preserve observed vintages: later revisions never replace values in an earlier cutoff. */
     public static JSONArray mergeMarket(JSONArray old,JSONArray incoming,Instant seen)throws Exception{
         JSONArray out=new JSONArray(old.toString());Map<String,JSONObject> latest=new HashMap<>();
@@ -240,7 +282,7 @@ public final class ContextData {
         try{
             List<String[]> all=new ArrayList<>(Arrays.asList(FEEDS));all.add(new String[]{"market","FRED：原油與匯率",MARKET_URL});all.add(new String[]{"eiaArchive","EIA：能源歷史報導","https://www.eia.gov/todayinenergy/archive.php?my="+year});
             for(String[] feed:all)tasks.submit(()->{
-                try{JSONObject stats=new JSONObject();String data=download(feed[2]);JSONArray rows=feed[0].equals("market")?parseMarket(data,Instant.now()):feed[0].equals("eiaArchive")?parseArchive(data,year):parseRss(data,feed[1],Instant.now(),stats);return new Object[]{feed,rows,null,stats};}
+                try{JSONObject stats=new JSONObject();String data=feed[0].equals("market")?"":download(feed[2]);JSONArray rows=feed[0].equals("market")?fetchMarket(Instant.now()):feed[0].equals("eiaArchive")?parseArchive(data,year):parseRss(data,feed[1],Instant.now(),stats);return new Object[]{feed,rows,null,stats};}
                 catch(Exception e){return new Object[]{feed,null,e,null};}
             });
             for(int i=0;i<total;i++){

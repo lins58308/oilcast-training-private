@@ -30,6 +30,21 @@ public final class CloudContractTest {
         privateAccuracy.getJSONObject("cloudAccuracy").getJSONArray("issued").getJSONObject(0)
             .put("ledger",new JSONObject().put("amount",123));
         rejects(()->validate(privateAccuracy,null,now,true),"private bill data cannot be hidden in cloud accuracy history");
+        String[] ids={"DCOILBRENTEU","DCOILWTICO","DEXTAUS"};
+        String[] fredFiles=new String[3];
+        for(int column=0;column<3;column++){
+            StringBuilder csv=new StringBuilder("observation_date,"+ids[column]+"\n");
+            for(int day=0;day<125;day++){
+                LocalDate date=LocalDate.of(2026,1,1).plusDays(day);
+                csv.append(date).append(',').append(day==10&&column==1?".":String.valueOf(30+column*10+day*.01)).append('\n');
+            }
+            fredFiles[column]=csv.toString();
+        }
+        JSONArray reunited=ContextData.parseMarket(ContextData.mergeFredSeries(fredFiles),now);
+        ok(reunited.length()==125,"independent official FRED series are reunited without dropped dates");
+        ok(reunited.getJSONObject(10).getJSONArray("values").isNull(1),"missing FRED observations remain missing");
+        String[] broken=fredFiles.clone();broken[2]=broken[2].replace("observation_date,DEXTAUS","observation_date,UNTRUSTED");
+        rejects(()->ContextData.mergeFredSeries(broken),"single-series fallback rejects unexpected FRED headers");
         rejects(()->validate(base,null,now,false),"demo cannot install in production");
         rejects(()->validate(base,null,now.plusSeconds(36*3600+1),true),"stale model rejected");
         rejects(()->validate(base,null,now.minusSeconds(301),true),"future clock skew rejected");
