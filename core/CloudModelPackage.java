@@ -100,6 +100,8 @@ public final class CloudModelPackage {
         }
         for(int f=0;f<4;f++){
             JSONObject row=summary.getJSONObject(f);require(row.getInt("fuel")==f&&row.getInt("count")>=0,"Invalid accuracy summary");
+            if(row.has("directionHits"))require(row.getInt("directionHits")>=0&&row.getInt("directionHits")<=row.getInt("directionCount"),"Invalid direction-hit count");
+            if(row.has("within01Count"))require(row.getInt("within01Count")>=0&&row.getInt("within01Count")<=row.getInt("count"),"Invalid tolerance-hit count");
             for(String field:new String[]{"mae","bias","within01","direction"})if(!row.isNull(field))require(Double.isFinite(row.getDouble(field))&&Math.abs(row.getDouble(field))<=100,"Invalid accuracy metric");
         }
     }

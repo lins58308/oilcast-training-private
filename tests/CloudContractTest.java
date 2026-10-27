@@ -22,6 +22,10 @@ public final class CloudContractTest {
         JSONObject cloudAccuracy=result.getJSONObject("cloudAccuracy");
         ok(cloudAccuracy.getJSONArray("perFuel").length()==4,"cloud accuracy summarizes all four fuels");
         ok(cloudAccuracy.getJSONArray("issued").length()==1,"cloud trainer records its forecast once");
+        for(int fuelIndex=0;fuelIndex<4;fuelIndex++){
+            JSONObject summary=cloudAccuracy.getJSONArray("perFuel").getJSONObject(fuelIndex);
+            ok(summary.has("direction")&&summary.has("directionCount")&&summary.has("directionHits"),"signed cloud package contains direction hit rate and count "+fuelIndex);
+        }
         JSONObject invalidAccuracy=new JSONObject(base.toString());
         invalidAccuracy.getJSONObject("cloudAccuracy").getJSONArray("issued").getJSONObject(0)
             .getJSONArray("predicted").put(0,9999);

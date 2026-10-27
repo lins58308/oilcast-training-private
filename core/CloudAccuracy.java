@@ -89,7 +89,9 @@ public final class CloudAccuracy {
                 .put("mae", count == 0 ? JSONObject.NULL : sumAbs / count)
                 .put("bias", count == 0 ? JSONObject.NULL : sumBias / count)
                 .put("within01", count == 0 ? JSONObject.NULL : within01 * 100.0 / count)
+                .put("within01Count", within01)
                 .put("directionCount", directionCount)
+                .put("directionHits", directionMatches)
                 .put("direction", directionCount == 0 ? JSONObject.NULL : directionMatches * 100.0 / directionCount);
             summary.put(item);
         }
