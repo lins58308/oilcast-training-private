@@ -49,6 +49,24 @@ public final class CloudContractTest {
         ok(reunited.getJSONObject(10).getJSONArray("values").isNull(1),"missing FRED observations remain missing");
         String[] broken=fredFiles.clone();broken[2]=broken[2].replace("observation_date,DEXTAUS","observation_date,UNTRUSTED");
         rejects(()->ContextData.mergeFredSeries(broken),"single-series fallback rejects unexpected FRED headers");
+        String[] restResponses=new String[3];
+        for(int column=0;column<3;column++){
+            JSONArray observations=new JSONArray();
+            for(int day=0;day<125;day++){
+                LocalDate date=LocalDate.of(2026,1,1).plusDays(day);
+                observations.put(new JSONObject().put("date",date.toString())
+                    .put("value",day==10&&column==1?".":String.valueOf(30+column*10+day*.01)));
+            }
+            restResponses[column]=new JSONObject().put("observations",observations).toString();
+        }
+        JSONArray fromOfficialApi=ContextData.parseMarket(ContextData.mergeFredApiObservations(restResponses),now);
+        ok(fromOfficialApi.length()==125,"official FRED API can be converted to audited CSV without losing dates");
+        ok(fromOfficialApi.getJSONObject(10).getJSONArray("values").isNull(1),"official API missing values remain unknown");
+        String[] alteredApi=restResponses.clone();
+        JSONObject invalid=new JSONObject(restResponses[0]);
+        invalid.getJSONArray("observations").getJSONObject(1).put("value","not-a-number");
+        alteredApi[0]=invalid.toString();
+        rejects(()->ContextData.mergeFredApiObservations(alteredApi),"official API rejects malformed observations");
         rejects(()->validate(base,null,now,false),"demo cannot install in production");
         rejects(()->validate(base,null,now.plusSeconds(36*3600+1),true),"stale model rejected");
         rejects(()->validate(base,null,now.minusSeconds(301),true),"future clock skew rejected");

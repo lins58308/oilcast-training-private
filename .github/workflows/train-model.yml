@@ -25,4 +25,5 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           MODEL_SIGNING_KEY_B64: ${{ secrets.MODEL_SIGNING_KEY_B64 }}
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
         run: python3 pipeline.py
