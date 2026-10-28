@@ -15,7 +15,7 @@ public final class PublicHttp {
     private static final ScheduledExecutorService WATCH=Executors.newScheduledThreadPool(2,r->{Thread t=new Thread(r,"source-timeout");t.setDaemon(true);return t;});
     private static final ExecutorService CLOSE=Executors.newCachedThreadPool(r->{Thread t=new Thread(r,"source-close");t.setDaemon(true);return t;});
     private static final ConcurrentMap<Thread,Set<HttpURLConnection>> ACTIVE=new ConcurrentHashMap<>();
-    private static final Set<String> HOSTS=new HashSet<>(Arrays.asList("vipmbr.cpc.com.tw","fred.stlouisfed.org","www.eia.gov","feeds.feedburner.com","news.google.com","tw.news.yahoo.com","money.udn.com","feeds.bbci.co.uk","www.aljazeera.com","rss.dw.com"));
+    private static final Set<String> HOSTS=new HashSet<>(Arrays.asList("vipmbr.cpc.com.tw","fred.stlouisfed.org","api.stlouisfed.org","www.eia.gov","feeds.feedburner.com","news.google.com","tw.news.yahoo.com","money.udn.com","feeds.bbci.co.uk","www.aljazeera.com","rss.dw.com"));
     public static void begin(){OWNER.set(Thread.currentThread());}
     public static void end(){OWNER.remove();}
     public static void cancel(Thread owner){Set<HttpURLConnection> connections=ACTIVE.get(owner);if(connections!=null)for(HttpURLConnection c:connections)CLOSE.execute(c::disconnect);}
@@ -47,7 +47,7 @@ public final class PublicHttp {
             try{
                 if(caller.isInterrupted()||(owner!=null&&owner.isInterrupted()))throw new InterruptedIOException("已停止來源同步");
                 int status=c.getResponseCode();
-                if(status==301||status==302||status==303||status==307||status==308){String location=c.getHeaderField("Location");if(location==null)throw new IOException("來源轉址缺少網址");url=checked(new URL(url,location).toString());continue;}
+                if(status==301||status==302||status==303||status==307||status==308){String location=c.getHeaderField("Location");if(location==null)throw new IOException("來源轉址缺少網址");URL next=checked(new URL(url,location).toString());if(url.getHost().equalsIgnoreCase("api.stlouisfed.org")&&!next.getHost().equalsIgnoreCase(url.getHost()))throw new IOException("FRED API 不允許跨網域轉址");url=next;continue;}
                 if(status==502||status==503||status==504)throw new RetryableException(status);
                 if(status!=200)throw new IOException("來源 HTTP "+status);
                 ByteArrayOutputStream out=new ByteArrayOutputStream();byte[] buffer=new byte[8192];int n;
