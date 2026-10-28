@@ -86,7 +86,9 @@ public final class Learner {
     }
 
     public static final class Score {
-        public double mae, direction; public double[] errors;
+        public double mae, direction, movementRecall, falseMoveRate;
+        public int movingCount, movementHits;
+        public double[] errors;
         public JSONArray points=new JSONArray();
     }
     public static Score evaluate(List<OilData.Row> rows,int fuel,double kind,int from,int to)throws JSONException{
