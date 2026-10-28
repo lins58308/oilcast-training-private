@@ -4,7 +4,7 @@ name: Train and publish Oilcast model
   schedule:
     - cron: '17 0,6,12,18 * * *'
 permissions:
-  contents: write
+  contents: read
 concurrency:
   group: oilcast-public-model-publisher
   cancel-in-progress: false
@@ -23,7 +23,8 @@ jobs:
           java-version: '17'
       - name: Restore, train, sign, verify and publish
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          MODEL_PUBLIC_REPOSITORY: lins58308/oilcast-models
+          MODEL_PUBLISH_TOKEN: ${{ secrets.MODEL_PUBLISH_TOKEN }}
           MODEL_SIGNING_KEY_B64: ${{ secrets.MODEL_SIGNING_KEY_B64 }}
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
         run: python3 pipeline.py
