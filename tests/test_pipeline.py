@@ -1,4 +1,5 @@
 import base64,hashlib,json,pathlib,tempfile,unittest,sys
+from unittest.mock import patch
 sys.path.insert(0,str(pathlib.Path(__file__).resolve().parents[1]))
 import pipeline
 
@@ -86,5 +87,16 @@ class PipelineTests(unittest.TestCase):
         redirected=pipeline.SafeRedirect().redirect_request(request,None,302,'',{},'https://release-assets.githubusercontent.com/file')
         self.assertIsNone(redirected.get_header('Authorization'))
         with self.assertRaises(RuntimeError):pipeline.SafeRedirect().redirect_request(request,None,302,'',{},'https://evil.test/file')
+    def test_private_training_cannot_publish_into_same_repository(self):
+        env={'GITHUB_REPOSITORY':'lins58308/oilcast-models','GITHUB_RUN_ID':'123','GITHUB_RUN_ATTEMPT':'1',
+             'MODEL_PUBLIC_REPOSITORY':'lins58308/oilcast-models','MODEL_PUBLISH_TOKEN':'fake-test-token',
+             'MODEL_SIGNING_KEY_B64':'fake-test-key'}
+        with patch.dict('os.environ',env,clear=True):
+            with self.assertRaisesRegex(RuntimeError,'must be separate'):pipeline.main()
+    def test_private_training_needs_scoped_publisher_token(self):
+        env={'GITHUB_REPOSITORY':'lins58308/oilcast-training-private','GITHUB_RUN_ID':'123','GITHUB_RUN_ATTEMPT':'1',
+             'MODEL_PUBLIC_REPOSITORY':'lins58308/oilcast-models','MODEL_SIGNING_KEY_B64':'fake-test-key'}
+        with patch.dict('os.environ',env,clear=True):
+            with self.assertRaisesRegex(RuntimeError,'MODEL_PUBLISH_TOKEN'):pipeline.main()
 
 if __name__=='__main__':unittest.main()
