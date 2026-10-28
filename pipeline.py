@@ -106,16 +106,22 @@ def publish(api,tag,folder):
 
 def main():
     repo=os.environ.get('GITHUB_REPOSITORY','');run_id=os.environ.get('GITHUB_RUN_ID','');attempt=os.environ.get('GITHUB_RUN_ATTEMPT','1')
+    public_repo=os.environ.get('MODEL_PUBLIC_REPOSITORY','')
+    publish_token=os.environ.get('MODEL_PUBLISH_TOKEN','')
     if not re.fullmatch(r'[0-9]+',run_id) or not re.fullmatch(r'[0-9]+',attempt):raise RuntimeError('This publisher runs only inside a configured GitHub workflow')
+    if not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+',public_repo):raise RuntimeError('MODEL_PUBLIC_REPOSITORY is missing or invalid')
+    if public_repo==repo:raise RuntimeError('Training and public-download repositories must be separate')
+    if not publish_token:raise RuntimeError('MODEL_PUBLISH_TOKEN is not configured')
     if not os.environ.get('MODEL_SIGNING_KEY_B64'):raise RuntimeError('MODEL_SIGNING_KEY_B64 is not configured')
-    api=GitHub(repo,os.environ.get('GITHUB_TOKEN',''));tag='model-'+run_id+'-'+attempt;out=ROOT/'output';out.mkdir(exist_ok=True)
-    run_url='https://github.com/'+repo+'/actions/runs/'+run_id
+    api=GitHub(public_repo,publish_token);tag='model-'+run_id+'-'+attempt;out=ROOT/'output';out.mkdir(exist_ok=True)
+    # A public status file must not expose the private Actions run URL.
+    run_url='https://github.com/'+public_repo+'/releases/latest'
     def report(phase,percent,outcome='running'):
         api.status({'schema':1,'outcome':outcome,'phase':phase,'percent':percent,'updatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'runUrl':run_url})
     process=None
     try:
         report('prepare',0);restore_checkpoint(api,api.latest(),ROOT/'checkpoint.json')
-        url='https://github.com/'+repo+'/releases/download/'+tag+'/model.json'
+        url='https://github.com/'+public_repo+'/releases/download/'+tag+'/model.json'
         process=subprocess.Popen(['python3',str(ROOT/'run_training.py'),'--live','--checkpoint',str(ROOT/'checkpoint.json'),'--output',str(out),'--model-url',url],cwd=ROOT)
         last_phase=None;last_report=0
         while process.poll() is None:
@@ -129,7 +135,7 @@ def main():
         cp=str(ROOT/'build/classes')+os.pathsep+str(ROOT/'build/json.jar')
         subprocess.run(['java','-cp',cp,'VerifyOutput',str(ROOT),str(out)],check=True)
         report('publish',96);publish(api,tag,out)
-        subprocess.run(['java','-cp',cp,'VerifyPublicDownload',str(ROOT),repo,str(out)],check=True)
+        subprocess.run(['java','-cp',cp,'VerifyPublicDownload',str(ROOT),public_repo,str(out)],check=True)
         report('complete',100,'complete')
         print('Signed cloud model published:',tag)
     except Exception:
