@@ -1,6 +1,9 @@
 name: Train and publish Oilcast model
 'on':
   workflow_dispatch:
+  push:
+    branches:
+      - feature/neural-v7-backtesting
   schedule:
     - cron: '17 0,6,12,18 * * *'
 permissions:
@@ -10,9 +13,9 @@ concurrency:
   cancel-in-progress: false
 jobs:
   train:
-    if: github.event_name == 'workflow_dispatch' || vars.OILCAST_SERVICE_ENABLED == 'true'
+    if: (github.ref_name == 'main' && (github.event_name == 'workflow_dispatch' || vars.OILCAST_SERVICE_ENABLED == 'true')) || (github.ref_name == 'feature/neural-v7-backtesting' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[publish-neural-v7]'))))
     runs-on: ubuntu-24.04
-    timeout-minutes: 12
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6 verified 2026-10-12
         with:
@@ -24,6 +27,7 @@ jobs:
       - name: Restore, train, sign, verify and publish
         env:
           MODEL_PUBLIC_REPOSITORY: lins58308/oilcast-models
+          MODEL_TEST_CHANNEL: ${{ github.ref_name == 'feature/neural-v7-backtesting' && 'true' || 'false' }}
           MODEL_PUBLISH_TOKEN: ${{ secrets.MODEL_PUBLISH_TOKEN }}
           MODEL_SIGNING_KEY_B64: ${{ secrets.MODEL_SIGNING_KEY_B64 }}
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}

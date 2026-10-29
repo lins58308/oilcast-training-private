@@ -36,7 +36,7 @@ public final class CloudModelPackage {
         require(!manifest.getBoolean("demo")||allowDemo,"Demo models cannot be activated in production");
         JSONObject data=new JSONObject(new String(payload,StandardCharsets.UTF_8)),model=data.getJSONObject("model");
         require(data.getInt("schema")==1&&data.getString("source").equals(OilData.SOURCE),"Unsupported model package");
-        require(model.getInt("schema")==2&&model.getString("algorithm").equals(MultiLearner.VERSION)&&manifest.getString("algorithm").equals(MultiLearner.VERSION),"App algorithm upgrade is required");
+        require(model.getInt("schema")==2&&MultiLearner.supports(model.getString("algorithm"))&&manifest.getString("algorithm").equals(model.getString("algorithm")),"App algorithm upgrade is required");
         require(model.getInt("revision")>0&&model.getInt("revision")==manifest.getInt("revision"),"Invalid model revision");
         Instant trained=Instant.parse(model.getString("trainedAt")),synced=Instant.parse(data.getString("cpcSyncedAt"));
         for(Instant instant:new Instant[]{trained,synced}){long age=Duration.between(instant,now).getSeconds();require(age>=-300&&age<=36*3600,"Model or official data is stale");}

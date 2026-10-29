@@ -10,12 +10,14 @@ import java.util.Arrays;
 public final class VerifyPublicDownload {
     public static void main(String[] args) throws Exception {
         Path root = Path.of(args[0]), output = Path.of(args[2]);
-        String repository = args[1];
+        String repository = args[1],tag=args.length>3?args[3]:"latest";
         if (!repository.matches("[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+"))
             throw new IllegalArgumentException("Invalid repository");
+        if (!tag.equals("latest")&&!tag.matches("model-[0-9]+-[0-9]+"))
+            throw new IllegalArgumentException("Invalid immutable model tag");
         PublicKey key = CloudModelPackage.publicKey(Files.readString(root.resolve("model-public.txt")));
         byte[] envelopeBytes = ModelHttp.read("https://github.com/" + repository
-                + "/releases/latest/download/envelope.json", 32768, null);
+                + "/releases/"+(tag.equals("latest")?"latest/download/":"download/"+tag+"/")+"envelope.json", 32768, null);
         JSONObject envelope = new JSONObject(new String(envelopeBytes, StandardCharsets.UTF_8));
         JSONObject manifest = CloudModelPackage.manifest(envelope, key, "oilcast-model-v1");
         byte[] payload = ModelHttp.read(CloudModelPackage.payloadUrl(manifest, repository),

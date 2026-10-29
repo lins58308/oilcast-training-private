@@ -41,6 +41,32 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual([x[2] for x in self.api.calls if x[0]=='upload'],['model.json','envelope.json','checkpoint.json'])
         patch=next(i for i,x in enumerate(self.api.calls) if x[0]=='PATCH')
         self.assertTrue(all(i<patch for i,x in enumerate(self.api.calls) if x[0]=='upload' and x[2] in {'model.json','envelope.json'}))
+    def test_neural_test_channel_preserves_v6_latest(self):
+        old={'tag_name':'old-v6','id':-1,'draft':False,'prerelease':False,'assets':[]}
+        self.api.latest_value=old
+        published=pipeline.publish(self.api,'model-fixture',self.folder,test_channel=True)
+        self.assertTrue(published['prerelease']);self.assertFalse(published['draft'])
+        self.assertIs(self.api.latest_value,old)
+        self.assertIn('training-checkpoint-v7',self.api.releases)
+        self.assertNotIn('training-checkpoint',self.api.releases)
+        self.assertTrue(all(x[2].get('make_latest')!='true' for x in self.api.calls if x[0]=='PATCH'))
+    def test_neural_test_checkpoint_recovery_is_isolated(self):
+        self.api.releases['training-checkpoint']={'assets':[{'name':'checkpoint.json','data':b'old-v6-unchanged'}]}
+        self.api.releases['training-checkpoint-v7']={'assets':[{'name':'checkpoint.json','data':json.dumps({'cloudStateSchema':1,**self.model}).encode()}]}
+        output=self.folder/'neural-restored.json'
+        pipeline.restore_checkpoint(self.api,None,output,'training-checkpoint-v7')
+        self.assertEqual(json.loads(output.read_text())['model']['revision'],2)
+        self.assertEqual(self.api.releases['training-checkpoint']['assets'][0]['data'],b'old-v6-unchanged')
+    def test_neural_test_branch_guard(self):
+        env={'GITHUB_REPOSITORY':'lins58308/oilcast-training-private','GITHUB_RUN_ID':'123','GITHUB_RUN_ATTEMPT':'1',
+             'GITHUB_REF_NAME':'main','MODEL_TEST_CHANNEL':'true','MODEL_PUBLIC_REPOSITORY':'lins58308/oilcast-models',
+             'MODEL_PUBLISH_TOKEN':'test-token','MODEL_SIGNING_KEY_B64':'test-key'}
+        with patch.dict('os.environ',env,clear=True):
+            with self.assertRaisesRegex(RuntimeError,'isolated branch'):pipeline.main()
+    def test_status_channel_filename_allowlist(self):
+        api=pipeline.GitHub('lins58308/oilcast-models','test-token')
+        with self.assertRaisesRegex(RuntimeError,'Invalid status channel'):
+            api.status({'phase':'test'},'../../status.json')
     def test_second_asset_failure_keeps_model_unpublished(self):
         self.api.fail_asset='envelope.json'
         with self.assertRaises(RuntimeError):pipeline.publish(self.api,'model-fixture',self.folder)
