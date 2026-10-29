@@ -50,18 +50,24 @@ public final class NeuralLearner {
     public static Network fit(double[][] x,double[] y,double decay,long seed){
         if(x.length!=y.length||x.length<32||decay<0||decay>.1)throw new IllegalArgumentException("神經網路訓練樣本異常");
         int hold=Math.max(12,x.length/7),train=x.length-hold;
-        double[] p=init(seed),best=p.clone(),m=new double[SIZE],v=new double[SIZE];
+        double[] trainingWeights=sampleWeights(y,train),fullWeights=sampleWeights(y,x.length);
+        double[] p=init(seed),m=new double[SIZE],v=new double[SIZE];
         double bestLoss=Double.POSITIVE_INFINITY;int chosen=1,stale=0;
         for(int epoch=1;epoch<=MAX_EPOCHS;epoch++){
-            step(p,m,v,x,y,train,decay,epoch);
+            step(p,m,v,x,y,trainingWeights,train,decay,epoch);
             double loss=score(p,x,y,train,x.length);
-            if(loss+1e-7<bestLoss){bestLoss=loss;best=p.clone();chosen=epoch;stale=0;}
+            if(loss+1e-7<bestLoss){bestLoss=loss;chosen=epoch;stale=0;}
             else if(++stale>=PATIENCE)break;
         }
         // Retrain for the selected number of epochs using *all* observations available at this origin.
         p=init(seed);m=new double[SIZE];v=new double[SIZE];
-        for(int epoch=1;epoch<=chosen;epoch++)step(p,m,v,x,y,x.length,decay,epoch);
+        for(int epoch=1;epoch<=chosen;epoch++)step(p,m,v,x,y,fullWeights,x.length,decay,epoch);
         return new Network(p);
+    }
+    private static double[] sampleWeights(double[] y,int count){
+        double[] weights=new double[count];
+        for(int i=0;i<count;i++)weights[i]=Math.pow(.5,(count-1-i)/26.0)*(Math.abs(y[i])>=.049?2.5:1);
+        return weights;
     }
     private static double score(double[] p,double[][] x,double[] y,int start,int end){
         Network model=new Network(p);double loss=0,weight=0;
@@ -71,10 +77,10 @@ public final class NeuralLearner {
         }
         return loss/Math.max(1e-9,weight);
     }
-    private static void step(double[] p,double[] m,double[] v,double[][] x,double[] y,int count,double decay,int epoch){
+    private static void step(double[] p,double[] m,double[] v,double[][] x,double[] y,double[] weights,int count,double decay,int epoch){
         double[] grad=new double[SIZE];double total=0;
         for(int row=0;row<count;row++){
-            double w=Math.pow(.5,(count-1-row)/26.0)*(Math.abs(y[row])>=.049?2.5:1);total+=w;double[] z=x[row];
+            double w=weights[row];total+=w;double[] z=x[row];
             double[] a=new double[H1],b=new double[H2];
             for(int i=0;i<H1;i++){double t=p[B1+i];for(int j=0;j<INPUT;j++)t+=p[W1+i*INPUT+j]*z[j];a[i]=Math.tanh(t);}
             for(int i=0;i<H2;i++){double t=p[B2+i];for(int j=0;j<H1;j++)t+=p[W2+i*H1+j]*a[j];b[i]=Math.tanh(t);}
@@ -85,12 +91,12 @@ public final class NeuralLearner {
             for(int i=0;i<H2;i++)for(int j=0;j<H1;j++){grad[W2+i*H1+j]+=db[i]*a[j];da[j]+=db[i]*p[W2+i*H1+j];}
             for(int i=0;i<H1;i++){da[i]*=1-a[i]*a[i];grad[B1+i]+=da[i];for(int j=0;j<INPUT;j++)grad[W1+i*INPUT+j]+=da[i]*z[j];}
         }
-        double lr=.022;
+        double lr=.022,bias1=1-Math.pow(.9,epoch),bias2=1-Math.pow(.999,epoch);
         for(int i=0;i<SIZE;i++){
             boolean weight=i<B1||i>=W2&&i<B2||i>=W3&&i<B3;
             double g=grad[i]/total+(weight?decay*p[i]:0);
             m[i]=.9*m[i]+.1*g;v[i]=.999*v[i]+.001*g*g;
-            p[i]-=lr*(m[i]/(1-Math.pow(.9,epoch)))/(Math.sqrt(v[i]/(1-Math.pow(.999,epoch)))+1e-8);
+            p[i]-=lr*(m[i]/bias1)/(Math.sqrt(v[i]/bias2)+1e-8);
         }
     }
 }
