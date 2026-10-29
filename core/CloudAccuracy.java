@@ -2,9 +2,7 @@ package tw.oilcast.core;
 
 import java.time.Instant;
 import java.time.LocalDate;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -27,18 +25,28 @@ public final class CloudAccuracy {
                                     List<OilData.Row> official, Instant now) throws Exception {
         JSONArray issued = prior == null ? new JSONArray() :
             new JSONArray(prior.optJSONArray("issued") == null ? "[]" : prior.getJSONArray("issued").toString());
-        Map<String, OilData.Row> actual = new HashMap<>();
-        for (OilData.Row row : official) actual.put(row.date.toString(), row);
+        LocalDate today = now.atZone(OilData.TAIPEI).toLocalDate();
         for (int i = 0; i < issued.length(); i++) {
             JSONObject item = issued.getJSONObject(i);
-            OilData.Row observed = actual.get(item.getString("targetDate"));
+            LocalDate targetDate = LocalDate.parse(item.getString("targetDate"));
+            // CPC publishes change events, not a new row every Monday.
+            // Wait until the day AFTER the forecast target; a fresh official CPC
+            // synchronization is required by CloudTrainer before a live publish.
+            if (!targetDate.isBefore(today)) continue;
+            OilData.Row observed = OilData.effective(official, targetDate);
             if (observed == null) continue;
+            boolean complete = true;
+            for (double value : observed.prices) if (!Double.isFinite(value)) complete = false;
+            if (!complete) continue;
             JSONArray revised = prices(observed.prices);
             if (!item.has("actual")) {
-                item.put("actual", revised).put("verifiedAt", now.toString());
+                item.put("actual", revised).put("verifiedAt", now.toString())
+                    .put("actualSource", "CPC-effective-price")
+                    .put("observedPriceDate", observed.date.toString());
             } else if (!item.getJSONArray("actual").toString().equals(revised.toString())) {
                 if (!item.has("firstActual")) item.put("firstActual", item.getJSONArray("actual"));
-                item.put("actual", revised).put("correctedAt", now.toString());
+                item.put("actual", revised).put("correctedAt", now.toString())
+                    .put("observedPriceDate", observed.date.toString());
             }
         }
         String target = model.getString("targetDate");
@@ -46,8 +54,7 @@ public final class CloudAccuracy {
         for (int i = 0; i < issued.length(); i++) {
             if (issued.getJSONObject(i).getString("targetDate").equals(target)) { exists = true; break; }
         }
-        LocalDate today = now.atZone(OilData.TAIPEI).toLocalDate();
-        if (!exists && LocalDate.parse(target).isAfter(today) && !actual.containsKey(target)) {
+        if (!exists && LocalDate.parse(target).isAfter(today)) {
             JSONArray predicted = new JSONArray(), families = new JSONArray();
             for (int i = 0; i < 4; i++) {
                 JSONObject fuel = model.getJSONArray("fuels").getJSONObject(i);
