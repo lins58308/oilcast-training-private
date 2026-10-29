@@ -226,11 +226,12 @@ public final class ContextData {
     private static JSONArray fetchMarketViaApi(String key,Instant seen)throws Exception{
         // FRED v1 requires an account-issued 32-character key; keep it only in the CI secret.
         if(!key.matches("[a-z0-9]{32}"))throw new IOException("FRED_API_KEY 格式錯誤");
-        String[] ids={"DCOILBRENTEU","DCOILWTICO","DEXTAUS"},responses=new String[3];
+        String[] ids={"DCOILBRENTEU","DCOILWTICO","DEXTAUS"},urls=new String[3];
         for(int i=0;i<ids.length;i++){
-            responses[i]=download("https://api.stlouisfed.org/fred/series/observations?series_id="+ids[i]
-                +"&observation_start=2019-01-01&file_type=json&api_key="+key);
+            urls[i]="https://api.stlouisfed.org/fred/series/observations?series_id="+ids[i]
+                +"&observation_start=2019-01-01&file_type=json&api_key="+key;
         }
+        String[] responses=downloadParallel(urls);
         JSONArray observations=parseMarket(mergeFredApiObservations(responses),seen);
         LocalDate cutoff=seen.atZone(OilData.TAIPEI).toLocalDate().minusDays(14);
         LocalDate[] latest={LocalDate.MIN,LocalDate.MIN,LocalDate.MIN};
@@ -251,14 +252,30 @@ public final class ContextData {
         catch(Exception primary){
             if(Thread.currentThread().isInterrupted())throw primary;
             try{
-                String[] ids={"DCOILBRENTEU","DCOILWTICO","DEXTAUS"},files=new String[3];
-                for(int i=0;i<ids.length;i++)files[i]=download("https://fred.stlouisfed.org/graph/fredgraph.csv?id="+ids[i]+"&cosd=2019-01-01");
-                return parseMarket(mergeFredSeries(files),seen);
+                String[] ids={"DCOILBRENTEU","DCOILWTICO","DEXTAUS"},urls=new String[3];
+                for(int i=0;i<ids.length;i++)urls[i]="https://fred.stlouisfed.org/graph/fredgraph.csv?id="+ids[i]+"&cosd=2019-01-01";
+                return parseMarket(mergeFredSeries(downloadParallel(urls)),seen);
             }catch(Exception backup){
                 IOException error=new IOException("FRED 官方 CSV 來源仍無法連線"+(apiError==null?"；可在 GitHub 設定 FRED_API_KEY 啟用官方 API 備援":"；官方 API 也無法更新")+"（"+primary.getClass().getSimpleName()+" / "+backup.getClass().getSimpleName()+"）",backup);
                 error.addSuppressed(primary);if(apiError!=null)error.addSuppressed(apiError);throw error;
             }
         }
+    }
+    /** Fetch independent official FRED series concurrently; keep the original array order.
+     *  A slow endpoint may delay its own source, but never multiplies the delay by three. */
+    private static String[] downloadParallel(String[] urls)throws Exception{
+        ExecutorService pool=Executors.newFixedThreadPool(urls.length);
+        List<Future<String>> futures=new ArrayList<>();
+        try{
+            for(String url:urls)futures.add(pool.submit(()->download(url)));
+            String[] out=new String[urls.length];
+            for(int i=0;i<out.length;i++)out[i]=futures.get(i).get(85,TimeUnit.SECONDS);
+            return out;
+        }catch(ExecutionException error){
+            Throwable cause=error.getCause();
+            if(cause instanceof Exception)throw (Exception)cause;
+            throw new IOException("FRED 並行讀取失敗",cause);
+        }finally{for(Future<String> future:futures)future.cancel(true);pool.shutdownNow();}
     }
     /** Preserve observed vintages: later revisions never replace values in an earlier cutoff. */
     public static JSONArray mergeMarket(JSONArray old,JSONArray incoming,Instant seen)throws Exception{
