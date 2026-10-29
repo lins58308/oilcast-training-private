@@ -111,7 +111,10 @@ def main():
     public_repo=os.environ.get('MODEL_PUBLIC_REPOSITORY','')
     publish_token=os.environ.get('MODEL_PUBLISH_TOKEN','')
     test_channel=os.environ.get('MODEL_TEST_CHANNEL','false').lower()=='true'
-    if test_channel and os.environ.get('GITHUB_REF_NAME')!='feature/neural-v7-backtesting':raise RuntimeError('v7 test publisher can only run on its isolated branch')
+    if test_channel:
+        direct_branch=(os.environ.get('GITHUB_REF_NAME')=='feature/neural-v7-backtesting' and os.environ.get('GITHUB_EVENT_NAME') in {'push','workflow_dispatch'})
+        trusted_schedule=(os.environ.get('GITHUB_REF_NAME')=='main' and os.environ.get('GITHUB_WORKFLOW')=='Maintain OilCast NN v7 public test feed' and os.environ.get('GITHUB_EVENT_NAME') in {'schedule','workflow_dispatch'})
+        if not (direct_branch or trusted_schedule):raise RuntimeError('v7 test publisher can only run on its isolated branch or trusted maintenance workflow')
     if not re.fullmatch(r'[0-9]+',run_id) or not re.fullmatch(r'[0-9]+',attempt):raise RuntimeError('This publisher runs only inside a configured GitHub workflow')
     if not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+',public_repo):raise RuntimeError('MODEL_PUBLIC_REPOSITORY is missing or invalid')
     if public_repo==repo:raise RuntimeError('Training and public-download repositories must be separate')
