@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   train:
-    if: github.event_name == 'workflow_dispatch' || vars.OILCAST_SERVICE_ENABLED == 'true'
+    if: (github.ref_name == 'main' && (github.event_name == 'workflow_dispatch' || vars.OILCAST_SERVICE_ENABLED == 'true')) || (github.ref_name == 'feature/neural-v7-backtesting' && github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     steps:
@@ -24,6 +24,7 @@ jobs:
       - name: Restore, train, sign, verify and publish
         env:
           MODEL_PUBLIC_REPOSITORY: lins58308/oilcast-models
+          MODEL_TEST_CHANNEL: ${{ github.ref_name == 'feature/neural-v7-backtesting' && 'true' || 'false' }}
           MODEL_PUBLISH_TOKEN: ${{ secrets.MODEL_PUBLISH_TOKEN }}
           MODEL_SIGNING_KEY_B64: ${{ secrets.MODEL_SIGNING_KEY_B64 }}
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
