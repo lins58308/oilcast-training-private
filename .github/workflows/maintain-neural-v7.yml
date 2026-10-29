@@ -1,0 +1,32 @@
+name: Maintain OilCast NN v7 public test feed
+'on':
+  workflow_dispatch:
+  schedule:
+    - cron: '47 1,13 * * *'
+permissions:
+  contents: read
+concurrency:
+  group: oilcast-public-model-publisher
+  cancel-in-progress: false
+jobs:
+  neural-test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout reviewed v7 training source (pinned SHA)
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: f166322bb1353e2e0b99fa4e29dd6813e389bbf7
+          persist-credentials: false
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Train, sign and publish v7 prerelease only
+        env:
+          MODEL_PUBLIC_REPOSITORY: lins58308/oilcast-models
+          MODEL_TEST_CHANNEL: 'true'
+          MODEL_PUBLISH_TOKEN: ${{ secrets.MODEL_PUBLISH_TOKEN }}
+          MODEL_SIGNING_KEY_B64: ${{ secrets.MODEL_SIGNING_KEY_B64 }}
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+        run: python3 pipeline.py
