@@ -1,0 +1,32 @@
+name: OilCast admin - force cloud prediction model
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: "Choose auto to release override, stable to force v6, neural-v7 to force neural test model"
+        required: true
+        type: choice
+        options:
+          - auto
+          - stable
+          - neural-v7
+permissions:
+  contents: read
+concurrency:
+  group: oilcast-model-admin-control
+  cancel-in-progress: false
+jobs:
+  signed-channel-control:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    environment: oilcast-model-admin
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - name: Sign and publish bounded model override
+        env:
+          MODEL_FORCE_CHANNEL: ${{ inputs.channel }}
+          MODEL_PUBLISH_TOKEN: ${{ secrets.MODEL_PUBLISH_TOKEN }}
+          MODEL_SIGNING_KEY_B64: ${{ secrets.MODEL_SIGNING_KEY_B64 }}
+        run: python3 model_control.py
