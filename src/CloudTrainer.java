@@ -51,7 +51,7 @@ public final class CloudTrainer {
         if(priorAccuracy==null&&old!=null)priorAccuracy=CloudAccuracy.update(null,old.getJSONObject("model"),rows,asOf);
         JSONObject cloudAccuracy=CloudAccuracy.update(priorAccuracy,model,rows,asOf);
         JSONObject publicContext=ContextData.publicationView(outside,asOf);
-        JSONObject payload=new JSONObject().put("schema",1).put("source",OilData.SOURCE).put("cpcSyncedAt",cpcSynced.toString()).put("rows",OilData.json(rows)).put("model",model).put("multisource",publicContext).put("sourceStates",ContextData.catalog(outside.optJSONObject("sources"))).put("cloudAccuracy",cloudAccuracy);
+        JSONObject payload=new JSONObject().put("schema",1).put("trainingNewsArchiveComplete",false).put("source",OilData.SOURCE).put("cpcSyncedAt",cpcSynced.toString()).put("rows",OilData.json(rows)).put("model",model).put("multisource",publicContext).put("sourceStates",ContextData.catalog(outside.optJSONObject("sources"))).put("cloudAccuracy",cloudAccuracy);
         byte[] bytes=payload.toString().getBytes(StandardCharsets.UTF_8);if(bytes.length>CloudModelPackage.MAX_BYTES)throw new IllegalArgumentException("Model package exceeds limit");
         JSONObject manifest=new JSONObject().put("schema",1).put("demo",!live).put("algorithm",MultiLearner.VERSION).put("revision",revision).put("trainedAt",asOf.toString()).put("dataThrough",model.getString("trainedThrough")).put("targetDate",model.getString("targetDate")).put("payloadSha256",CloudModelPackage.sha(bytes)).put("payloadBytes",bytes.length).put("payloadFile","model.json");
         if(args.length>6&&!args[6].isEmpty())manifest.put("payloadUrl",args[6]);
