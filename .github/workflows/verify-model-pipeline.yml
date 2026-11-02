@@ -43,6 +43,8 @@ jobs:
           java -cp build/classes:build/json.jar SemanticResearchDatasetTest .
           java -cp build/classes:build/json.jar CpcHistoricalBackfillTest
           java -cp build/classes:build/json.jar CpcHistoricalBackfillTest --live
+          javac --release 11 -cp build/classes:build/json.jar -d build/classes tests/LongHistoryModelTest.java
+          java -Xmx2g -cp build/classes:build/json.jar LongHistoryModelTest
           java -cp build/classes:build/json.jar CloudContractTest .
           if test -f tests/NeuralLearnerTest.java; then
             javac --release 11 -cp build/classes:build/json.jar -d build/classes tests/NeuralLearnerTest.java
