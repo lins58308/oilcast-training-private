@@ -173,3 +173,50 @@ geopolitical/transport risk feature. The 26-feature Android schema remains
 unchanged. Training still compares models to the unchanged-price baseline,
 and each fuel includes historicalDrivers associations, which are not
 causal claims. Signed v6 and isolated v7 releases must be verified separately.
+
+## CPC 1999–present historical backfill and dated news, 2026-11-03
+
+**Official gasoline/diesel history:** The authoritative CPC page
+`https://vipmbr.cpc.com.tw/mbwebs/showhistoryprice_oil2019.aspx`
+contains 632 valid effective-price change events dated 1999-01-06 through
+2019-12-30. Live GitHub checks on 2026-11-03 confirmed both v6 and v7
+can fetch and parse that archive with no fabricated prices. Missing
+individual fuel values stay null until a later official observation,
+and all no-change weeks are then forward-carried. Combined with the
+existing 2020+ official data, a test cutoff of 2026-09-07 produced **1,417**
+complete dated CPC weeks (first full 4-fuel week 1999-07-19) and **1,404**
+supervised training pairs after the 12-week lag warm-up.
+
+CloudTrainer downloads that source once when a checkpoint starts
+after 2000; it merges historical events with current CPC and retains
+them in the signed public model plus its separate training checkpoint.
+Signed **live** publication now fails closed if the history is fewer
+than 1,300 weeks or begins at/after 2000. It cannot silently fall back
+to the older 2020-only training dataset.
+
+**Original historic Brent, WTI, and USD/TWD:** All FRED API and CSV
+paths now request 1999 onward, preserving the existing source
+timestamp handling, missing values, and estimated 10-day historical
+availability delay. The model must never claim a retrospectively
+reconstructed FRED observation is a verified original real-time
+market vintage.
+
+**News:** Original world/energy RSS continues to train as time-aligned
+news inputs; EIA historical *Today in Energy* archive downloads are
+attempted for uncovered years 2011–2018, and each year is only marked
+covered if actually parsed. Before 2011, this archive provides **no
+article coverage**. The open GDELT 1.0 event database can supply
+conflict and shipping event proxies back to 1999, but those coded
+events are not verified full article texts and **are not yet active
+in the signed Android predictor**. Never insert a newly discovered
+2002 headline into 2002's inputs without a defensible original
+publication/availability timestamp.
+
+**Accuracy, not just history length:** Read-only chronological live
+tests with 1,404 supervised pairs confirm v6/v7 candidate models
+continue to be compared against the unchanged-price baseline.
+In the fixture historical 13-week audit all four fuels selected
+baseline; expanding training years did **not** demonstrate predictive
+accuracy improvement. Deep multilingual news-encoder experiments are
+research-only until validation improves and deployment has compatible
+Android inference.
