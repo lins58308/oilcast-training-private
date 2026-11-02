@@ -153,6 +153,21 @@ def main():
     policies,selection=choose_policies(labels,estimated,prob,train,confirm,hold)
     predicted=apply_hurdle(estimated,prob,policies)
     base=np.zeros_like(labels)
+    movement_probability_scores=[]
+    # Report calibrated risk separately from exact 0.1-TWD movement accuracy.
+    # Never use these locked-audit scores to choose/train the model.
+    for g,group in enumerate(("gasoline","diesel")):
+        actual_changed=(np.abs(ys[hold:,g])>=.049).astype(np.float32)
+        historical_prior=float(np.mean(np.abs(ys[:train,g])>=.049))
+        p=np.clip(prob[hold:,g],0,1)
+        movement_probability_scores.append({
+            "group":group,
+            "holdoutWeeks":int(len(actual_changed)),
+            "actualAdjustmentFrequencyPct":round(float(100*np.mean(actual_changed)),2),
+            "modelBrier":round(float(np.mean((p-actual_changed)**2)),6),
+            "historicalPriorBrier":round(float(np.mean((historical_prior-actual_changed)**2)),6),
+            "alwaysUnchangedBrier":round(float(np.mean(actual_changed**2)),6),
+            "trainOnlyAdjustmentPrior":round(historical_prior,6)})
     report={"schema":1,"variant":args.variant,"model":"regularized CPC up/flat/down hurdle",
         "status":"RESEARCH_ONLY","weeks":n,"featureCount":x.shape[1],
         "trainingWeeks":train,"developmentWeeks":confirm-train,
@@ -164,12 +179,14 @@ def main():
         "lockedHoldout52Weeks":{"baseline":indicators(labels[hold:],base[hold:]),
            "candidate":indicators(labels[hold:],predicted[hold:])},
         "policy":selection,"groupModels":metadata,
+        "riskCalibration52Weeks":movement_probability_scores,
         "automaticProductionPromotion":False,
         "provenance":"All price-streak features use targets strictly preceding each forecast origin; market/news snapshots pre-date target."
         }
     Path(args.output).parent.mkdir(parents=True,exist_ok=True)
     Path(args.output).write_text(json.dumps(report,ensure_ascii=False,indent=2))
     print(json.dumps({"stage":"policy_hurdle_complete","variant":args.variant,
-        "selectedPolicies":selection,"lockedHoldout52Weeks":report["lockedHoldout52Weeks"]}),flush=True)
+        "selectedPolicies":selection,"lockedHoldout52Weeks":report["lockedHoldout52Weeks"],
+        "riskCalibration52Weeks":movement_probability_scores}),flush=True)
 
 if __name__=="__main__":main()
