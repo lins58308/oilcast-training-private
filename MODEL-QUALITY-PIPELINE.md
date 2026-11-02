@@ -204,3 +204,35 @@ baseline; expanding training years did **not** demonstrate predictive
 accuracy improvement. Deep multilingual news-encoder experiments are
 research-only until validation improves and deployment has compatible
 Android inference.
+
+## Accuracy experiments: nested validation and CPC-aware market features
+
+CPC's documented floating-price mechanism uses the **weekly Platts 7D3B
+(70% Dubai / 30% Brent)** indicator, FX, an 80% nominal adjustment
+factor, plus Asian-neighbor price ceilings and discretionary price
+absorption. Raw WTI, Brent and generic world-news headlines alone cannot
+reproduce the retail policy decisions. Source: https://price.ndc.gov.tw/p/zh_tw/energy
+
+The *experimental* pre-trained multilingual text-encoder teacher now:
+
+- Separates older training history, a 52-week early-stopping interval,
+  a DIFFERENT 39-week model-calibration/selection interval, and a locked
+  untouched last 13 weeks. Never choose an epoch, regularizer or forecast
+  threshold based on final test weeks.
+- Compares deep MLP (v6) or temporal Transformer (v7) against standard
+  ridge regression and the unchanged-price baseline. For each fuel, tries
+  predeclared shrinkage and no-change thresholds. It must demonstrably
+  reduce selection-period MAE by 0.01 TWD/L, meet false-movement and
+  directional safeguards, and capture actual changes before passing.
+- Compares pooled equal gasoline adjustments for 92/95/98 against
+  unconstrained predictions; CPC policy commonly changes them together.
+- Adds **IMF monthly Dubai POILDUBUSDM** from FRED to research inputs
+  only, with a 62-day embargo measured from each monthly observation
+  start. This is NOT historical real-time Platts weekly Dubai and NOT a
+  genuine 7D3B weekly computation. Revisions and original vintages are
+  not independently verified. Keep it outside signed Android packages
+  until reliability and actual benefit have been established.
+
+A successful PyTorch run alone is not a promotion. The result must
+include per-fuel MAE, RMSE, direction, changed-week recall, false moves,
+comparative unchanged baseline, and coverage/provenance limitations.
