@@ -72,9 +72,15 @@ jobs:
             . output/checkpoint.json output/research-dataset.json "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
       - name: Install CPU/GPU deep learning libraries
         run: |
-          python3 -m pip install --no-cache-dir \
-            'numpy>=1.26,<3' 'torch>=2.3,<3' 'transformers>=4.45,<5' \
+          if [[ "${VARIANT}" != "v6" && "${VARIANT}" != "v7" ]]; then echo "Invalid variant"; exit 1; fi
+          python3 -m pip install --no-cache-dir 'numpy>=1.26,<3' 'transformers>=4.45,<5' \
             'safetensors>=0.4,<1' 'sentencepiece>=0.2,<1'
+          if command -v nvidia-smi >/dev/null 2>&1; then
+            python3 -m pip install --no-cache-dir 'torch>=2.3,<3'
+          else
+            python3 -m pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu 'torch>=2.3,<3'
+          fi
+          python3 -c "import torch,transformers; print('TORCH',torch.__version__,'GPU',torch.cuda.is_available(),'HF',transformers.__version__)"
       - name: Train frozen 0.3B E5 encoder with v6 or v7 temporal teacher
         env:
           HF_HUB_DISABLE_TELEMETRY: '1'
