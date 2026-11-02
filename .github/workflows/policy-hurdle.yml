@@ -60,11 +60,17 @@ jobs:
             --dataset output/research-dataset.json \
             --variant "$VARIANT" \
             --output "output/hurdle-$VARIANT.json"
+          python3 research/backtest_hurdle_eras.py \
+            --dataset output/research-dataset.json \
+            --variant "$VARIANT" \
+            --output "output/rolling-year-$VARIANT.json"
       - name: Keep evaluation report for review; do not auto-publish Android
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: cpc-policy-hurdle-${{ github.run_id }}
-          path: output/hurdle-*.json
+          path: |
+            output/hurdle-*.json
+            output/rolling-year-*.json
           if-no-files-found: warn
           retention-days: 30
