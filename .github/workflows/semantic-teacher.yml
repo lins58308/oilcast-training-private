@@ -101,6 +101,7 @@ jobs:
           python3 research/train_semantic_teacher.py \
             --dataset output/research-dataset-7d3b.json \
             --variant "$VARIANT" \
+            --encoder-revision d128750597153bb5987e10b1c3493a34e5a4502a \
             --output "output/teacher-$VARIANT" \
             --device auto --epochs 80 --patience 12 --batch-size 16
       - name: Retain accuracy comparison and model weights; never Android-promote
