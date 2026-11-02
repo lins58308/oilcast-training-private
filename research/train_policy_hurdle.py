@@ -143,7 +143,8 @@ def main():
     args=parser.parse_args()
     rows=json.loads(Path(args.dataset).read_text())["examples"]
     x,ys=dataset_features(rows)
-    labels=np.column_stack((ys[:,0],ys[:,0],ys[:,0],ys[:,1]))
+    labels=np.asarray([r["nextWeekDeltas"] for r in rows],dtype=np.float32)
+    # Audit against the actual FOUR CPC labels, never replace observed labels with median.
     n=len(rows)
     # 52 develop + 26 independent confirmation + 52 final locked audit.
     hold=n-52;confirm=hold-26;train=confirm-52
