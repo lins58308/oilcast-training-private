@@ -413,7 +413,7 @@ public final class ContextData {
         List<News> visible=new ArrayList<>();Set<String> seenTitles=new HashSet<>();Map<String,double[]> bySource=new TreeMap<>();
         for(News n:news)if(!n.available.isAfter(asof)&&!n.published.isAfter(asof)&&n.published.isAfter(asof.minusSeconds(NEWS_WINDOW_DAYS*86400L))){
             String source=publisher(n.json.optString("source")),title=normalizedTitle(n.json.getString("title"),source);
-            if(!seenTitles.add(title))continue;
+            if(!seenTitles.add(source+":"+title))continue; // Each independent publisher contributes its own observation.
             double weight=Math.max(.25,Math.exp(-Duration.between(n.published,asof).toHours()/96.0));
             double[] part=bySource.computeIfAbsent(source,k->new double[8]);part[6]+=weight;part[7]++;
             s.count++;for(int t:n.topics)part[t]+=weight;visible.add(n);
