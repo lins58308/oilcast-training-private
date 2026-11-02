@@ -14,6 +14,17 @@ def report(path):
     assert len(model["fuels"]) == 4, "missing a fuel"
     fuels = []
     for fuel in model["fuels"]:
+        # All known weekly labels after the required 12-week lag window
+        # must enter the final fit. Holdout applies to model selection only.
+        full_history_samples = model["weeks"] - 13
+        assert full_history_samples > 156, "fixture cannot verify expanding history"
+        assert fuel["trainingSamples"] == full_history_samples, (
+            "final fit silently discarded historical CPC weeks"
+        )
+        if fuel["family"] != 0:
+            assert fuel["fit"]["samples"] == full_history_samples, (
+                "active fitted model did not use the whole history"
+            )
         points = fuel["backtest"]
         assert len(points) == fuel["testCount"] == 13, "unexpected locked audit size"
         errors = [abs(p["predicted"] - p["actual"]) for p in points]
