@@ -62,7 +62,7 @@ def encode_all(rows, model_id, revision, device, batch_size):
     with torch.inference_mode():
         for start in range(0, len(identifiers), batch_size):
             keys = identifiers[start:start + batch_size]
-            titles = ["query: " + all_news[k] for k in keys]
+            titles = ["passage: " + all_news[k] for k in keys]
             tokens = tokenizer(titles, max_length=128, truncation=True,
                                padding=True, return_tensors="pt").to(device)
             hidden = encoder(**tokens).last_hidden_state
