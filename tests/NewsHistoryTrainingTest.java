@@ -18,6 +18,30 @@ public final class NewsHistoryTrainingTest {
                                    Instant.parse(available),false);
     }
     public static void main(String[] args)throws Exception {
+        // These are global logistics and conflict signals, even without any oil word.
+        ok(ContextData.topics("War escalates in Eastern Europe").toString().contains("4"),
+           "worldwide armed conflict affects geopolitical risk feature");
+        ok(ContextData.topics("Suez Canal shipping route blocked by strikes").toString().contains("4"),
+           "canal shipping blockage affects route risk feature");
+        ok(ContextData.topics("Port congestion reroutes cargo vessels").toString().contains("4"),
+           "congested ports and vessel rerouting affect route risk feature");
+        ok(ContextData.topics("港口罷工導致航線中斷").toString().contains("4"),
+           "Chinese global port disruptions are recognized");
+        ok(!ContextData.topics("Panama Canal ships pass as normal").toString().contains("4"),
+           "routine safe canal operation is not labelled as disruption");
+        JSONObject globalConflict=ContextData.article("War escalates in Eastern Europe",
+            "https://www.bbc.com/news/world-conflict-signal","BBC",
+            Instant.parse("2026-10-29T00:00:00Z"),
+            Instant.parse("2026-10-29T01:00:00Z"),false);
+        ok(globalConflict!=null&&globalConflict.getBoolean("relevant")
+            &&globalConflict.getJSONArray("topics").toString().contains("4"),
+            "non-oil global war news is retained as a trainable risk event");
+        JSONObject routeClosure=ContextData.article("Suez Canal shipping route blocked",
+            "https://news.google.com/rss/articles/route-closure","Global maritime",
+            Instant.parse("2026-10-28T00:00:00Z"),
+            Instant.parse("2026-10-28T02:00:00Z"),false);
+        ok(routeClosure!=null&&routeClosure.getJSONArray("topics").toString().contains("4"),
+           "maritime routing problems enter the existing 26-dimensional feature");
         String now="2026-11-03T12:00:00Z";
         JSONObject historical=article("Oil supply cuts expected",
             "https://www.eia.gov/todayinenergy/2020oil","EIA",
