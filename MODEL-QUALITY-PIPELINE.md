@@ -16,8 +16,8 @@ means the pipeline is internally consistent, **not** that future forecasts are a
 3. **Construct only available-at-time features:** historical training snapshots
    are bounded by their historical origin; live market/news snapshot uses the
    current training time. Missing source availability must be explicit.
-4. **Fit competing candidates on past observations:** v6 uses unchanged,
-   momentum/linear and multi-source ridge alternatives; v7 additionally fits
+4. **Fit competing candidates on past observations:** v6 uses an unchanged-price baseline plus historical-price and
+   multi-source ridge/regression alternatives; v7 additionally fits
    a compact deterministic neural net. All four fuels are evaluated separately.
 5. **Time-ordered model comparison:** rolling-origin validation, then a later
    13-week audit. v6's existing 13-week activation gate is not an unbiased
