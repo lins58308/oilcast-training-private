@@ -33,8 +33,9 @@ jobs:
         run: python3 run_training.py --as-of 2026-09-13T13:00:00Z --output output
       - name: Check timeline, chronology and App model contract
         run: |
-          javac --release 11 -cp build/classes:build/json.jar -d build/classes tests/CloudContractTest.java tests/ModelTimelineTest.java
+          javac --release 11 -cp build/classes:build/json.jar -d build/classes tests/CloudContractTest.java tests/ModelTimelineTest.java tests/ModelTrainingCoverageTest.java
           java -cp build/classes:build/json.jar ModelTimelineTest
+          java -cp build/classes:build/json.jar ModelTrainingCoverageTest .
           java -cp build/classes:build/json.jar CloudContractTest .
           if test -f tests/NeuralLearnerTest.java; then
             javac --release 11 -cp build/classes:build/json.jar -d build/classes tests/NeuralLearnerTest.java
