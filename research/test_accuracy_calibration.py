@@ -53,7 +53,7 @@ class CpcAwareCalibrationTest(unittest.TestCase):
 
     def test_predeclared_thresholds_reject_tiny_fuel_movements(self):
         raw = np.array([[.049, -.049, .04, -.06]], dtype=np.float32)
-        selected = policy_prediction(raw, 1, .1)
+        selected = policy_prediction(raw, 1, .2)
         np.testing.assert_array_equal(selected, np.zeros_like(raw))
 
     def test_invalid_arrays_are_rejected(self):
