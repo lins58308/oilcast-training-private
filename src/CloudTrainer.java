@@ -32,16 +32,18 @@ public final class CloudTrainer {
             PublicHttp.begin();try{
                 List<OilData.Row> fetched=OilData.fetch();LocalDate day=OilData.today();
                 fetched.removeIf(row->row.date.isAfter(OilData.nextMonday(day)));
-                if(OilData.weekly(fetched,OilData.nextMonday(day)).size()<80)throw new IllegalArgumentException("CPC history is incomplete");
+                if(OilData.weeklyThrough(fetched,OilData.monday(day)).size()<80)throw new IllegalArgumentException("CPC history is incomplete");
                 List<OilData.Row> retained=new ArrayList<>();for(OilData.Row row:rows)if(row.date.isBefore(fetched.get(0).date))retained.add(row);
+                if (fetched.get(fetched.size()-1).date.isBefore(OilData.monday(day).minusWeeks(8)))
+                    throw new IllegalArgumentException("Official CPC events appear stale; keep previous signed model");
                 rows=OilData.merge(retained,fetched);cpcSynced=Instant.now();
                 System.out.println("CPC synchronized; updating public market and news sources");
                 progress.update("official",1,1,-1,-1);outside=ContextData.sync(outside,Instant.now(),progress);
             }finally{PublicHttp.end();}
             asOf=Instant.now();
         }
-        LocalDate day=asOf.atZone(OilData.TAIPEI).toLocalDate();List<OilData.Row> weekly=OilData.weekly(rows,OilData.nextMonday(day));
-        if(weekly.size()<80||weekly.get(weekly.size()-1).date.isBefore(OilData.monday(day)))throw new IllegalArgumentException("Official data does not cover the current week; no model published");
+        LocalDate day=asOf.atZone(OilData.TAIPEI).toLocalDate();List<OilData.Row> weekly=OilData.weeklyThrough(rows,OilData.monday(day));
+        if(weekly.size()<80||!weekly.get(weekly.size()-1).date.equals(OilData.monday(day)))throw new IllegalArgumentException("Official data does not cover the current week; no model published");
         ContextData context=new ContextData(outside);int revision=old==null?1:old.getJSONObject("model").getInt("revision")+1;
         String hash=ContextData.sha(OilData.fingerprint(weekly)+context.fingerprint()+day);
         long started=System.nanoTime();JSONObject model=MultiLearner.train(weekly,context,revision,hash,asOf,progress);long millis=(System.nanoTime()-started)/1_000_000;
