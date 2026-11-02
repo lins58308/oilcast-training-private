@@ -153,12 +153,14 @@ public final class MultiLearner {
             int active=candidate;
             Fit fitted=allFits[active],all=allFits[3];
             double base=rows.get(n-1).prices[f],pred=fitted.price(base,d.live[f]);
-            Learner.Score calibration=evaluate(d,f,active,bestLambda[active],n-26,n,progress,done);double radius=Math.max(.1,Math.ceil(Learner.quantile(calibration.errors,.8)*10)/10);
+            // Independently calibrate prediction intervals on a prior 26-week
+            // period, not the locked 13-week audit labels.
+            Learner.Score calibration=evaluate(d,f,active,bestLambda[active],test-26,test,progress,done);double radius=Math.max(.1,Math.ceil(Learner.quantile(calibration.errors,.8)*10)/10);
             String decision=active==0?"候選未在兩個歷史驗證視窗一致勝過價格不變基準，保留基準；最後 13 週為獨立稽核，不參與選模。":"已按兩個連續歷史驗證視窗選用「"+FAMILY[active]+"」；最近 13 週未參與選模。";
             
             for(int fam=0;fam<FAMILY.length;fam++){
                 double famPred=allFits[fam].price(base,d.live[f]);
-                Learner.Score familyErrors=fam==active?calibration:evaluate(d,f,fam,bestLambda[fam],n-26,n,progress,done);
+                Learner.Score familyErrors=fam==active?calibration:evaluate(d,f,fam,bestLambda[fam],test-26,test,progress,done);
                 double famRadius=Math.max(.1,Math.ceil(Learner.quantile(familyErrors.errors,.8)*10)/10);
                 familyList.put(new JSONObject()
                     .put("family",fam)
