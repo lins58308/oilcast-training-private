@@ -71,8 +71,8 @@ def report(path):
         "targetDate": model["targetDate"], "holdoutStart": model["testStart"],
         "holdoutEnd": model["testEnd"], "historicalOnly": True,
         "notLiveAccuracy": True, "automaticPromotionApproved": False,
-        "note": ("Holdout is only a diagnostic. v6 already uses this period as an activation gate, "
-                 "so its holdout is NOT an unbiased final test; v7 selects using earlier validation. "
+        "note": ("Holdout is only a diagnostic. v6 activation uses two earlier 39-week periods; "
+                 "the last 13 weeks are untouched audits in both v6 and v7. "
                  "Check realized, signed cloudAccuracy outcomes before any production switch."),
         "fuels": fuels,
     }

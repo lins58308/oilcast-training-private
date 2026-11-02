@@ -115,33 +115,52 @@ public final class MultiLearner {
     }
     public static JSONObject train(List<OilData.Row> rows,ContextData context,int revision,String hash,Instant now,ProgressListener progress)throws Exception{
         if(rows.size()<80)throw new IllegalArgumentException("至少需要 80 週歷史");
-        Data d=new Data(rows,context,now,progress);int[] done={0};int n=rows.size(),test=n-13,val=test-26;JSONArray fuels=new JSONArray();
+        Data d=new Data(rows,context,now,progress);int[] done={0};int n=rows.size(),test=n-13,val=test-39,early=val-39;JSONArray fuels=new JSONArray();
         boolean marketOK=d.marketWeeks>=80&&d.snapshot.values[17]>.99,newsOK=marketOK&&d.newsWeeks>=80&&d.snapshot.values[25]>.99;
         boolean[] eligible={true,true,marketOK,newsOK,newsOK,newsOK};
         for(int f=0;f<4;f++){
             JSONArray comparisons=new JSONArray();JSONArray familyList=new JSONArray();
             double[] bestLambda=new double[FAMILY.length],validation=new double[FAMILY.length];Learner.Score[] gate=new Learner.Score[FAMILY.length];
             Fit[] allFits=new Fit[FAMILY.length];
-            int candidate=0;validation[0]=evaluate(d,f,0,0,val,test,progress,done).mae;gate[0]=evaluate(d,f,0,0,test,n,progress,done);
+            // Tune using pre-holdout samples only. Two nonoverlapping periods
+            // guard against a freeze-specific or pre-freeze-specific false win.
+            int candidate=0;
+            double baseEarlier=evaluate(d,f,0,0,early,val,progress,done).mae;
+            validation[0]=evaluate(d,f,0,0,val,test,progress,done).mae;
+            gate[0]=evaluate(d,f,0,0,test,n,progress,done);
             allFits[0]=fit(d,n-1,f,0,0);progress.update("fit",++done[0],4*WORK_PER_FUEL,f,0);
             comparisons.put(new JSONObject().put("family",0).put("name",FAMILY[0]).put("validationMae",validation[0]).put("mae",gate[0].mae).put("eligible",true));
             for(int family=1;family<FAMILY.length;family++){
                 validation[family]=Double.POSITIVE_INFINITY;
-                for(double lambda:LAMBDAS){Learner.Score s=evaluate(d,f,family,lambda,val,test,progress,done);if(s.mae<validation[family]){validation[family]=s.mae;bestLambda[family]=lambda;}}
+                double earlierMae=Double.POSITIVE_INFINITY;
+                for(double lambda:LAMBDAS){
+                    Learner.Score later=evaluate(d,f,family,lambda,val,test,progress,done);
+                    Learner.Score prior=evaluate(d,f,family,lambda,early,val,progress,done);
+                    if(later.mae<validation[family]){
+                        validation[family]=later.mae;
+                        earlierMae=prior.mae;
+                        bestLambda[family]=lambda;
+                    }
+                }
                 gate[family]=evaluate(d,f,family,bestLambda[family],test,n,progress,done);
                 allFits[family]=fit(d,n-1,f,family,bestLambda[family]);progress.update("fit",++done[0],4*WORK_PER_FUEL,f,family);
-                comparisons.put(new JSONObject().put("family",family).put("name",FAMILY[family]).put("lambda",bestLambda[family]).put("validationMae",validation[family]).put("mae",gate[family].mae).put("eligible",eligible[family]));
-                if(eligible[family]&&validation[family]+.005<validation[candidate])candidate=family;
+                comparisons.put(new JSONObject().put("family",family).put("name",FAMILY[family]).put("lambda",bestLambda[family]).put("validationMae",validation[family]).put("earlierValidationMae",earlierMae).put("mae",gate[family].mae).put("eligible",eligible[family]));
+                if(eligible[family] && earlierMae+.015<baseEarlier
+                    && validation[family]+.015<validation[0]
+                    && validation[family]+.005<validation[candidate])candidate=family;
             }
-            int active=candidate!=0&&gate[candidate].mae+.01<gate[0].mae?candidate:0;
+            // The last 13 weeks are an untouched audit, NEVER an activation gate.
+            int active=candidate;
             Fit fitted=allFits[active],all=allFits[3];
             double base=rows.get(n-1).prices[f],pred=fitted.price(base,d.live[f]);
-            Learner.Score calibration=evaluate(d,f,active,bestLambda[active],n-26,n,progress,done);double radius=Math.max(.1,Math.ceil(Learner.quantile(calibration.errors,.8)*10)/10);
-            String decision=active==0?"多來源候選已訓練；本輪未通過相同期間的回測啟用門檻，主預測採用價格不變基準。":"已啟用「"+FAMILY[active]+"」，其候選通過最近 13 週的回測啟用門檻。";
+            // Independently calibrate prediction intervals on a prior 26-week
+            // period, not the locked 13-week audit labels.
+            Learner.Score calibration=evaluate(d,f,active,bestLambda[active],test-26,test,progress,done);double radius=Math.max(.1,Math.ceil(Learner.quantile(calibration.errors,.8)*10)/10);
+            String decision=active==0?"候選未在兩個歷史驗證視窗一致勝過價格不變基準，保留基準；最後 13 週為獨立稽核，不參與選模。":"已按兩個連續歷史驗證視窗選用「"+FAMILY[active]+"」；最近 13 週未參與選模。";
             
             for(int fam=0;fam<FAMILY.length;fam++){
                 double famPred=allFits[fam].price(base,d.live[f]);
-                Learner.Score familyErrors=fam==active?calibration:evaluate(d,f,fam,bestLambda[fam],n-26,n,progress,done);
+                Learner.Score familyErrors=fam==active?calibration:evaluate(d,f,fam,bestLambda[fam],test-26,test,progress,done);
                 double famRadius=Math.max(.1,Math.ceil(Learner.quantile(familyErrors.errors,.8)*10)/10);
                 familyList.put(new JSONObject()
                     .put("family",fam)
@@ -163,7 +182,7 @@ public final class MultiLearner {
             fuels.put(new JSONObject().put("fuel",f).put("family",active).put("kind",active==0?-1:bestLambda[active]).put("name",FAMILY[active])
                 .put("fit",fitted.json()).put("candidateFit",all.json()).put("candidateEligible",eligible[3]).put("candidateName",FAMILY[3]).put("candidateKind",bestLambda[3])
                 .put("mae",gate[active].mae).put("baselineMae",gate[0].mae).put("candidateMae",gate[3].mae).put("direction",gate[active].direction)
-                .put("testCount",13).put("validationCount",26).put("trainingSamples",n-13).put("predicted",pred)
+                .put("testCount",13).put("validationCount",39).put("trainingSamples",n-13).put("predicted",pred)
                 .put("lower",Math.max(5,Learner.round(pred-radius))).put("upper",Math.min(100,Learner.round(pred+radius))).put("radius",radius)
                 .put("backtest",gate[active].points).put("comparisons",comparisons).put("decision",decision)
                 .put("historicalDrivers",WeeklyDriverEvidence.analyze(d,f))
