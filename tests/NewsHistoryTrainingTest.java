@@ -42,6 +42,14 @@ public final class NewsHistoryTrainingTest {
         ok(merged.length()==5,"all distinct source articles survive merge, including old news");
         ok(ContextData.mergeNews(merged,batch).length()==5,"repeated feeds do not duplicate stories");
 
+        // The previous 5,000-story rolling eviction must never discard earlier news.
+        JSONArray longArchive=new JSONArray();
+        for(int i=0;i<5005;i++)
+            longArchive.put(new JSONObject()
+                .put("id","archive-"+i).put("title","Historical oil event "+i)
+                .put("source","EIA").put("availableAt","2020-01-01T12:00:00Z"));
+        ok(ContextData.mergeNews(new JSONArray(),longArchive).length()==5005,
+           "stories older than the former 5,000-item cap remain in training");
         JSONObject full=ContextData.empty().put("news",merged);
         ContextData ctx=new ContextData(full);
         ContextData.Snapshot historicalSnap=ctx.snapshot(Instant.parse("2020-05-20T12:00:00Z"));
