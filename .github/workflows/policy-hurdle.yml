@@ -1,0 +1,70 @@
+name: OilCast long-horizon policy-and-adjustment accuracy research
+'on':
+  push:
+    branches:
+      - experiment/cpc-accuracy-v6-20261103
+      - experiment/cpc-accuracy-v7-20261103
+permissions:
+  contents: read
+concurrency:
+  group: oilcast-cpc-hurdle-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  backtest:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.11'
+      - name: Build verified 27-year CPC historical data exporter
+        run: |
+          python3 run_training.py --as-of 2026-09-13T13:00:00Z --output output/demo
+      - name: Restore last live 27-year price and world-news checkpoint
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF_NAME" == *v6* ]]; then VARIANT=v6; TAG=training-checkpoint
+          elif [[ "$GITHUB_REF_NAME" == *v7* ]]; then VARIANT=v7; TAG=training-checkpoint-v7
+          else echo 'Invalid variant'; exit 1
+          fi
+          echo "VARIANT=$VARIANT" >> "$GITHUB_ENV"
+          curl --fail --location --retry 3 --silent --show-error \
+            "https://github.com/lins58308/oilcast-models/releases/download/$TAG/checkpoint.json" \
+            --output output/checkpoint.json
+          java -cp build/classes:build/json.jar tw.oilcast.core.SemanticResearchDataset \
+            . output/checkpoint.json output/research-dataset.json "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          python3 - <<'PY'
+          import json
+          a=json.load(open('output/research-dataset.json'))
+          assert len(a['examples'])>1300
+          print('Supervised, dated official CPC weeks=',len(a['examples']))
+          PY
+      - name: Install bounded CPU histogram gradient boosting dependencies
+        run: |
+          python3 -m pip install --no-cache-dir \
+            'numpy>=1.26,<3' 'scikit-learn>=1.5,<2'
+      - name: Prove no future leakage and conservative selection
+        run: |
+          python3 -m unittest discover -s research -p 'test_policy_hurdle.py' -v
+          python3 -m unittest discover -s research -p 'test_accuracy_calibration.py' -v
+      - name: Compare 27-year movement hurdle with 52-week locked audit
+        run: |
+          python3 research/train_policy_hurdle.py \
+            --dataset output/research-dataset.json \
+            --variant "$VARIANT" \
+            --output "output/hurdle-$VARIANT.json"
+      - name: Keep evaluation report for review; do not auto-publish Android
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: cpc-policy-hurdle-${{ github.run_id }}
+          path: output/hurdle-*.json
+          if-no-files-found: warn
+          retention-days: 30
