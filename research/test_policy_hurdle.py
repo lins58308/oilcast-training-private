@@ -41,7 +41,7 @@ class PolicyHurdleTest(unittest.TestCase):
         p=apply_hurdle(exp,prob,[(1.,.5),(1.,.5)])
         np.testing.assert_array_equal(p[0,:3],[0,0,0])
         self.assertAlmostEqual(float(p[0,3]),-.5)
-        np.testing.assert_array_equal(p[1,:3],[.3,.3,.3])
+        np.testing.assert_allclose(p[1,:3],[.3,.3,.3],rtol=1e-6)
         self.assertEqual(p[1,3],0.)
 
     def test_confirmation_blocks_development_only_signal(self):
