@@ -117,6 +117,13 @@ def train_only_pca(news, end, components=32):
 
 def prepare(rows, semantic, sequence=4):
     numeric = np.array([r["features"] for r in rows], dtype=np.float32)
+    # CPC's 70% Dubai + 30% Brent benchmark is a major omitted driver.
+    # Append only deliberately lagged monthly Dubai proxies, never current
+    # full-month values unavailable at that historical prediction origin.
+    dubai = np.array([r.get("policyProxy", [0., 0., 0., 0.]) for r in rows], dtype=np.float32)
+    if dubai.shape != (len(rows), 4) or not np.isfinite(dubai).all():
+        raise ValueError("Invalid lagged Dubai policy proxies")
+    numeric = np.concatenate((numeric, np.repeat(dubai[:, None, :], 4, axis=1)), axis=2)
     targets = np.array([r["nextWeekDeltas"] for r in rows], dtype=np.float32)
     if not np.isfinite(numeric).all() or not np.isfinite(targets).all():
         raise ValueError("Nonfinite CPC, market, or news features")
@@ -368,7 +375,10 @@ def fit_and_report(data, args):
         "pretrainedEncoder": args.encoder, "encoderRevision": commit,
         "encoderFrozen": True, "device": str(device),
         "weeklyExamples": len(rows), "uniqueNews": len(vectors),
-        "numericalFeaturesPerFuel": 26, "newsPcaDimensions": 32,
+        "numericalFeaturesPerFuel": 30, "originalAndroidFeatureDimension": 26,
+        "dubaiProxy": data.get("policyProxyProvenance", {"missing": True}),
+        "dubaiWeeks": int(sum(r.get("policyProxy", [0., 0., 0., 0.])[-1] > 0 for r in rows)),
+        "newsPcaDimensions": 32,
         "temporalWeeks": 4, "predicts": "next-Monday CPC delta for each of 4 fuels",
         "forecasterParameters": params, "bestEpoch": chosen,
         "lastEpoch": len(curves), "elapsedSeconds": round(time.monotonic() - started, 2),
