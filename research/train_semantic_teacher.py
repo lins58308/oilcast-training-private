@@ -175,6 +175,18 @@ def fit_ridge_chronologically(x, y, train_end, tune_end):
             best_mae, best_lambda, best_prediction = mae, lam, pred
     return best_prediction, best_lambda, best_mae
 
+def pool_gasoline_adjustments(predictions):
+    """CPC generally adjusts 92/95/98 by the same TWD/L amount.
+
+    A physics/price-policy challenger, not an unconditional rule for early
+    historical weeks or for unverified announced prices.
+    """
+    out = np.asarray(predictions, dtype=np.float32).copy()
+    if out.ndim != 2 or out.shape[1] != 4:
+        raise ValueError("Four gasoline/diesel outputs required")
+    out[:, :3] = np.mean(out[:, :3], axis=1, keepdims=True)
+    return out
+
 def select_conservative_forecaster(actual_validation, raw_candidates):
     """Select per-fuel abstention and regularization on validation, NEVER locked test.
 
@@ -328,15 +340,23 @@ def fit_and_report(data, args):
     held_baseline = metrics(y[test_start:], np.zeros_like(y[test_start:]))
     held_teacher = metrics(y[test_start:], held_prediction)
     held_ridge = metrics(y[test_start:], ridge_prediction[test_start:])
-    choices = select_conservative_forecaster(
-        y[val_start:test_start],
-        {"deep": val_prediction, "ridge": ridge_prediction[val_start:test_start]})
-    calibrated_validation = apply_selections(
-        {"deep": val_prediction, "ridge": ridge_prediction[val_start:test_start]},
-        choices, test_start - val_start)
-    calibrated_heldout = apply_selections(
-        {"deep": held_prediction, "ridge": ridge_prediction[test_start:]},
-        choices, len(y) - test_start)
+    # Compare the legal gasoline-equal-adjustment candidate as well as
+    # independent fuel heads; selection uses only the earlier 39 weeks.
+    val_candidates = {
+        "deep": val_prediction,
+        "deepGasolineShared": pool_gasoline_adjustments(val_prediction),
+        "ridge": ridge_prediction[val_start:test_start],
+        "ridgeGasolineShared": pool_gasoline_adjustments(ridge_prediction[val_start:test_start]),
+    }
+    held_candidates = {
+        "deep": held_prediction,
+        "deepGasolineShared": pool_gasoline_adjustments(held_prediction),
+        "ridge": ridge_prediction[test_start:],
+        "ridgeGasolineShared": pool_gasoline_adjustments(ridge_prediction[test_start:]),
+    }
+    choices = select_conservative_forecaster(y[val_start:test_start], val_candidates)
+    calibrated_validation = apply_selections(val_candidates, choices, test_start - val_start)
+    calibrated_heldout = apply_selections(held_candidates, choices, len(y) - test_start)
     val_selected = metrics(y[val_start:test_start], calibrated_validation)
     held_selected = metrics(y[test_start:], calibrated_heldout)
     eligible = [choice["approved"] for choice in choices]
