@@ -69,23 +69,43 @@ class GitHub:
         if sha:request['sha']=sha
         self.request(path,method='PUT',value=request)
 
-def restore_checkpoint(api,latest,output):
-    checkpoint=api.release('training-checkpoint')
+def restore_checkpoint(api,latest,output,checkpoint_tag='training-checkpoint'):
+    # Checkpoint is the complete public training-news archive; the signed Android
+    # model intentionally contains only a small live inference projection.
+    checkpoint=api.release(checkpoint_tag)
+    def validate_state(data):
+        state=json.loads(data)
+        if state.get('cloudStateSchema')!=1 or any(k in state for k in ('ledger','authorization','bills')):
+            raise RuntimeError('Invalid public training checkpoint')
+        if not isinstance(state.get('multisource',{}).get('news'),list):
+            raise RuntimeError('Missing full historical news in training state')
+        return state
+    def from_release(release):
+        if any(asset.get('name')=='training-state.json' for asset in release.get('assets',[])):
+            data=api.asset(release,'training-state.json')
+            return data,validate_state(data)
+        # Historical releases before full-archive support stored every story
+        # in model.json. A newer projected model can NEVER repair an archive.
+        data=api.asset(release,'model.json');payload=json.loads(data)
+        if payload.get('trainingNewsArchiveComplete') is False:
+            raise RuntimeError('Full training archive asset missing; refusing news-history loss')
+        if 'multisource' not in payload or any(k in payload for k in ('ledger','authorization','issued')):
+            raise RuntimeError('Latest public model cannot restore training data')
+        state={'cloudStateSchema':1,'rows':payload['rows'],'multisource':payload['multisource'],
+               'model':payload['model'],'cloudAccuracy':payload.get('cloudAccuracy')}
+        return json.dumps(state).encode(),validate_state(json.dumps(state).encode())
+
+    current=None
     if checkpoint:
-        data=api.asset(checkpoint,'checkpoint.json');state=json.loads(data)
-        if state.get('cloudStateSchema')!=1 or any(k in state for k in ['ledger','authorization','bills']):raise RuntimeError('Invalid public training checkpoint')
-        output.write_bytes(data)
-    elif latest:
-        # Never silently reset the revision/history after a checkpoint upload failure.
-        data=api.asset(latest,'model.json');payload=json.loads(data)
-        if 'multisource' not in payload or any(k in payload for k in ['ledger','authorization','issued']):raise RuntimeError('Latest public model cannot restore training data')
-        output.write_text(json.dumps({'cloudStateSchema':1,'rows':payload['rows'],'multisource':payload['multisource'],'model':payload['model'],'cloudAccuracy':payload.get('cloudAccuracy')}))
-    else:return
-    # A model may have been published immediately before a checkpoint update failed.
+        raw=api.asset(checkpoint,'checkpoint.json');current=validate_state(raw);output.write_bytes(raw)
     if latest:
-        payload=json.loads(api.asset(latest,'model.json'));old=json.loads(output.read_text())
-        if payload['model']['trainedAt']>old['model']['trainedAt']:
-            output.write_text(json.dumps({'cloudStateSchema':1,'rows':payload['rows'],'multisource':payload['multisource'],'model':payload['model'],'cloudAccuracy':payload.get('cloudAccuracy')}))
+        latest_model=json.loads(api.asset(latest,'model.json'))
+        if current is None or latest_model['model']['trainedAt']>current['model']['trainedAt']:
+            recovery,recovered=from_release(latest)
+            if recovered['model']['trainedAt']!=latest_model['model']['trainedAt']:
+                raise RuntimeError('Release recovery state and model revision differ')
+            output.write_bytes(recovery)
+    # No release/checkpoint means a first-ever training run from the bundled seed.
 
 def publish(api,tag,folder):
     envelope=json.loads((folder/'envelope.json').read_text());manifest=json.loads(base64.b64decode(envelope['manifestBase64']))
@@ -97,7 +117,10 @@ def publish(api,tag,folder):
     draft=api.request('/releases',method='POST',value={'tag_name':tag,'name':'Oilcast model '+manifest['trainedAt'],'body':'Public oil-price model. Forecasts are estimates; official CPC announcements take precedence.','draft':True,'prerelease':False,'make_latest':'false'})
     api.upload(draft,'model.json',model)
     api.upload(draft,'envelope.json',(folder/'envelope.json').read_bytes())
-    # Both immutable assets have been read back before becoming the public latest model.
+    # Recover ALL historical news if the mutable checkpoint publication fails.
+    # The immutable release must contain both Android inference and full training state.
+    api.upload(draft,'training-state.json',(folder/'checkpoint.json').read_bytes())
+    # All immutable assets have been read back before becoming the public latest model.
     release=api.request('/releases/'+str(draft['id']),method='PATCH',value={'draft':False,'make_latest':'true'})
     checkpoint=api.release('training-checkpoint')
     if not checkpoint:checkpoint=api.request('/releases',method='POST',value={'tag_name':'training-checkpoint','name':'Public training checkpoint','draft':False,'prerelease':True,'make_latest':'false'})
