@@ -16,6 +16,7 @@ import random
 import time
 
 import numpy as np
+from cpc_aware_calibration import tie_gasoline, fit_calibration, apply_calibration, indicators
 
 def seed_all(seed, torch):
     random.seed(seed)
@@ -134,6 +135,18 @@ def prepare(rows, semantic, sequence=4):
     sem_std = compressed[:val_start].std(axis=0)
     compressed = np.clip((compressed - sem_mean) / np.maximum(sem_std, .05), -6, 6)
     features = np.concatenate((normal.reshape(n, -1), compressed), axis=1)
+    # Add CPC-style ex-ante BRent/FX proxy and observed availability flags.
+    # Do not call WTI Dubai: a licensed Dubai benchmark is NOT in this dataset.
+    brent_fx = (numeric[:, 0, 10] + numeric[:, 0, 12]
+                 + numeric[:, 0, 10]*numeric[:, 0, 12]/100.0)
+    enough_market = (numeric[:, 0, 17] >= 2/3).astype(np.float32)
+    proxy = brent_fx * enough_market
+    proxy_mean = float(proxy[:val_start].mean())
+    proxy_std = max(float(proxy[:val_start].std()), .1)
+    proxy = np.clip((proxy-proxy_mean)/proxy_std, -6, 6).astype(np.float32)
+    news_present = np.array([float(len(r["news"]) > 0) for r in rows], dtype=np.float32)
+    features = np.concatenate((features, proxy[:, None], enough_market[:, None],
+                               news_present[:, None]), axis=1)
     # Example t gets t-3..t, never input data from t+1.
     x = np.stack([features[i-sequence+1:i+1] for i in range(sequence-1, n)])
     y = targets[sequence-1:]
@@ -195,6 +208,9 @@ def fit_and_report(data, args):
                       "embeddingDimension": dim, "checkpoint": commit, "device": str(device)}), flush=True)
     semantic = weekly_embeddings(rows, vectors, dim)
     x, y, val_start, test_start, _ = prepare(rows, semantic)
+    confirmation_start = test_start - 13
+    if confirmation_start - val_start < 20:
+        raise ValueError("Need 26 development weeks before independent confirmation")
     tensors = torch.from_numpy(x).to(device)
     expected = torch.from_numpy(y).to(device)
     model = make_model(args.variant, x.shape[-1], torch).to(device)
@@ -208,6 +224,9 @@ def fit_and_report(data, args):
         losses = []
         for indices in order.split(args.batch_size):
             prediction = model(tensors[indices])
+            # CPC's three unleaded grades share a common weekly adjustment.
+            gas = prediction[:, :3].mean(dim=1, keepdim=True)
+            prediction = torch.cat((gas.repeat(1, 3), prediction[:, 3:]), dim=1)
             label = expected[indices]
             smooth = torch.nn.functional.smooth_l1_loss(prediction, label, reduction="none", beta=.25)
             weight = torch.where(label.abs() >= .049, 2.0, 1.0)
@@ -221,8 +240,8 @@ def fit_and_report(data, args):
             losses.append(float(loss.detach().cpu()))
         model.eval()
         with torch.inference_mode():
-            valid_pred = model(tensors[val_start:test_start]).cpu().numpy()
-        valid_loss = float(np.abs(valid_pred - y[val_start:test_start]).mean())
+            valid_pred = tie_gasoline(model(tensors[val_start:confirmation_start]).cpu().numpy())
+        valid_loss = float(np.abs(valid_pred - y[val_start:confirmation_start]).mean())
         curves.append({"epoch": epoch, "trainLoss": float(np.mean(losses)),
                        "validationMae": valid_loss})
         if valid_loss < best_loss - 1e-5:
@@ -237,19 +256,37 @@ def fit_and_report(data, args):
     model.load_state_dict(best_state)
     model.eval()
     with torch.inference_mode():
-        val_prediction = model(tensors[val_start:test_start]).cpu().numpy()
-        held_prediction = model(tensors[test_start:]).cpu().numpy()
-    val_baseline = metrics(y[val_start:test_start], np.zeros_like(y[val_start:test_start]))
-    val_teacher = metrics(y[val_start:test_start], val_prediction)
-    held_baseline = metrics(y[test_start:], np.zeros_like(y[test_start:]))
-    held_teacher = metrics(y[test_start:], held_prediction)
-    # Promotions are per fuel, and use VALIDATION only. Holdout stays blind.
-    eligible = []
-    for f in range(4):
-        eligible.append(bool(
-            val_teacher["mae"][f] + .01 < val_baseline["mae"][f]
-            and val_teacher["directionAccuracyPct"][f] >= val_baseline["directionAccuracyPct"][f] - 5
-            and val_teacher["falseMovementRatePct"][f] <= 25))
+        development_predictions = tie_gasoline(model(tensors[val_start:confirmation_start]).cpu().numpy())
+        confirmation_predictions = tie_gasoline(model(tensors[confirmation_start:test_start]).cpu().numpy())
+        held_prediction = tie_gasoline(model(tensors[test_start:]).cpu().numpy())
+    dev_labels = y[val_start:confirmation_start]
+    confirm_labels = y[confirmation_start:test_start]
+    holdout_labels = y[test_start:]
+    # CPC-grade shared forecast, with shrinkage / price-step threshold
+    # selected on the 26-week development sample, independently confirmed
+    # on the following 13 weeks. The last 13 weeks remain a LOCKED audit.
+    calibration, group_report = fit_calibration(
+        dev_labels, development_predictions, confirm_labels, confirmation_predictions)
+    selected_confirm = apply_calibration(confirmation_predictions, calibration)
+    selected_holdout = apply_calibration(held_prediction, calibration)
+    val_baseline = metrics(dev_labels, np.zeros_like(dev_labels))
+    val_teacher = metrics(dev_labels, development_predictions)
+    held_baseline = metrics(holdout_labels, np.zeros_like(holdout_labels))
+    held_teacher = metrics(holdout_labels, held_prediction)
+    eligible = [calibration[0] > 0]*3 + [calibration[1] > 0]
+    print(json.dumps({
+        "stage": "chronological_gates", "variant": args.variant,
+        "developmentBaseline": val_baseline["mae"],
+        "developmentTeacher": val_teacher["mae"],
+        "confirmation": {
+            "baseline": indicators(confirm_labels, np.zeros_like(confirm_labels)),
+            "teacher": indicators(confirm_labels, confirmation_predictions),
+            "calibrated": indicators(confirm_labels, selected_confirm)},
+        "lockedHoldout": {
+            "baseline": held_baseline, "teacher": held_teacher,
+            "calibrated": indicators(holdout_labels, selected_holdout)},
+        "selection": group_report,
+        "promote": eligible}), flush=True)
     output = Path(args.output)
     output.mkdir(parents=True, exist_ok=True)
     save_file({k: v.contiguous() for k, v in best_state.items()}, str(output / "semantic-teacher.safetensors"))
@@ -262,8 +299,17 @@ def fit_and_report(data, args):
         "temporalWeeks": 4, "predicts": "next-Monday CPC delta for each of 4 fuels",
         "forecasterParameters": params, "bestEpoch": chosen,
         "lastEpoch": len(curves), "elapsedSeconds": round(time.monotonic() - started, 2),
-        "validation": {"baseline": val_baseline, "teacher": val_teacher},
-        "lockedHoldout13Weeks": {"baseline": held_baseline, "teacher": held_teacher},
+        "developmentValidation26Weeks": {"baseline": val_baseline, "teacher": val_teacher},
+        "confirmation13Weeks": {
+            "baseline": metrics(confirm_labels, np.zeros_like(confirm_labels)),
+            "teacher": metrics(confirm_labels, confirmation_predictions),
+            "calibrated": metrics(confirm_labels, selected_confirm)},
+        "lockedHoldout13Weeks": {
+            "baseline": held_baseline, "teacher": held_teacher,
+            "calibrated": metrics(holdout_labels, selected_holdout)},
+        "cpcGradePolicy": "Shared 92/95/98 gasoline delta; separate diesel",
+        "physicsProxy": "Brent/FX only, never claimed to be 70% Dubai/30% Brent",
+        "calibrationPolicies": group_report,
         "validationApprovedByFuel": eligible,
         "automaticProductionPromotion": False,
         "timingWarning": "Historical news uses its first known availability; older RSS cannot be backdated.",
