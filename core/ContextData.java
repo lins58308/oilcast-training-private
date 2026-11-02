@@ -352,15 +352,28 @@ public final class ContextData {
     public static JSONObject sync(JSONObject stored,Instant now)throws Exception{return sync(stored,now,ProgressListener.NONE);}
     public static JSONObject sync(JSONObject stored,Instant now,ProgressListener progress)throws Exception{
         JSONObject out=new JSONObject(stored.toString()),states=catalog(out.optJSONObject("sources"));
-        int total=FEEDS.length+2,done=0;
+        int done=0;
+        // EIA Today in Energy archive begins 2011. Do not claim 1999-2010
+        // contains published article text; use GDELT for older events separately.
+        List<String[]> archives=new ArrayList<>();
+        JSONArray knownCoverage=out.getJSONArray("coverage");
+        for(int year=2011;year<=2018;year++){
+            boolean covered=false;
+            for(int i=0;i<knownCoverage.length();i++)
+                if(knownCoverage.getJSONObject(i).optInt("year",-1)==year)covered=true;
+            if(!covered)archives.add(new String[]{"eiaArchive-"+year,
+                "EIA historical headlines "+year,
+                "https://www.eia.gov/todayinenergy/archive.php?my="+year});
+        }
+        int total=FEEDS.length+2+archives.size();
         progress.update("sources",0,total,-1,-1);
         int year=now.atZone(OilData.TAIPEI).getYear();
         ExecutorService pool=Executors.newFixedThreadPool(4);CompletionService<Object[]> tasks=new ExecutorCompletionService<>(pool);
         progress.detail("正在並行同步原油、匯率與 "+FEEDS.length+" 個新聞來源；慢來源不會擋住其他來源");
         try{
-            List<String[]> all=new ArrayList<>(Arrays.asList(FEEDS));all.add(new String[]{"market","FRED：原油與匯率",MARKET_URL});all.add(new String[]{"eiaArchive","EIA：能源歷史報導","https://www.eia.gov/todayinenergy/archive.php?my="+year});
+            List<String[]> all=new ArrayList<>(Arrays.asList(FEEDS));all.add(new String[]{"market","FRED：原油與匯率",MARKET_URL});all.add(new String[]{"eiaArchive","EIA：能源歷史報導","https://www.eia.gov/todayinenergy/archive.php?my="+year});all.addAll(archives);
             for(String[] feed:all)tasks.submit(()->{
-                try{JSONObject stats=new JSONObject();String data=feed[0].equals("market")?"":download(feed[2]);JSONArray rows=feed[0].equals("market")?fetchMarket(Instant.now()):feed[0].equals("eiaArchive")?parseArchive(data,year):parseRss(data,feed[1],Instant.now(),stats);return new Object[]{feed,rows,null,stats};}
+                try{JSONObject stats=new JSONObject();String data=feed[0].equals("market")?"":download(feed[2]);JSONArray rows=feed[0].equals("market")?fetchMarket(Instant.now()):feed[0].startsWith("eiaArchive")?parseArchive(data,feed[0].equals("eiaArchive")?year:Integer.parseInt(feed[0].substring("eiaArchive-".length()))):parseRss(data,feed[1],Instant.now(),stats);return new Object[]{feed,rows,null,stats};}
                 catch(Exception e){return new Object[]{feed,null,e,null};}
             });
             for(int i=0;i<total;i++){
@@ -368,8 +381,15 @@ public final class ContextData {
                 if(Thread.currentThread().isInterrupted())throw new InterruptedIOException("已停止來源同步");
                 if(error==null){JSONArray rows=(JSONArray)result[1];
                     if(feed[0].equals("market"))out.put("market",mergeMarket(out.getJSONArray("market"),rows,Instant.now()));
-                    else{out.put("news",mergeNews(out.getJSONArray("news"),rows));if(feed[0].equals("eiaArchive")){JSONArray old=out.getJSONArray("coverage"),coverage=new JSONArray();for(int j=0;j<old.length();j++)if(old.getJSONObject(j).getInt("year")!=year)coverage.put(old.getJSONObject(j));coverage.put(new JSONObject().put("year",year).put("from",year+"-01-01").put("to",now.atZone(OilData.TAIPEI).toLocalDate().toString()));out.put("coverage",coverage);}}
-                    sourceState(states,feed[0],feed[1],Instant.now(),null);JSONObject stats=(JSONObject)result[3],s=states.getJSONObject(feed[0]);if(!feed[0].equals("market")&&!feed[0].equals("eiaArchive"))for(String key:new String[]{"rawCount","rejectedLinks","rejectedDates","irrelevantCount","relevantCount","retainedCount"})s.put(key,stats.optInt(key));
+                    else{out.put("news",mergeNews(out.getJSONArray("news"),rows));if(feed[0].startsWith("eiaArchive")){
+                        int archiveYear=feed[0].equals("eiaArchive")?year:Integer.parseInt(feed[0].substring("eiaArchive-".length()));
+                        JSONArray old=out.getJSONArray("coverage"),coverage=new JSONArray();
+                        for(int j=0;j<old.length();j++)if(old.getJSONObject(j).getInt("year")!=archiveYear)coverage.put(old.getJSONObject(j));
+                        coverage.put(new JSONObject().put("year",archiveYear).put("from",archiveYear+"-01-01")
+                            .put("to",archiveYear==year?now.atZone(OilData.TAIPEI).toLocalDate().toString():archiveYear+"-12-31"));
+                        out.put("coverage",coverage);
+                    }}
+                    sourceState(states,feed[0],feed[1],Instant.now(),null);JSONObject stats=(JSONObject)result[3],s=states.getJSONObject(feed[0]);if(!feed[0].equals("market")&&!feed[0].startsWith("eiaArchive"))for(String key:new String[]{"rawCount","rejectedLinks","rejectedDates","irrelevantCount","relevantCount","retainedCount"})s.put(key,stats.optInt(key));
                 }
                 else sourceState(states,feed[0],feed[1],Instant.now(),error);
                 progress.update("sources",++done,total,-1,-1);
