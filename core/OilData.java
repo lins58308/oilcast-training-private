@@ -122,6 +122,23 @@ public final class OilData {
         return out;
     }
 
+    /**
+     * Build the observed price history through the CURRENT Monday, not a future
+     * effective date already listed by CPC before the week starts. After a
+     * successful live CPC refresh, an unchanged week is a valid price label.
+     * This is never evidence that the next Monday's forecast is already known.
+     */
+    public static List<Row> weeklyThrough(List<Row> rows, LocalDate cutoffMonday) {
+        if (!monday(cutoffMonday).equals(cutoffMonday))
+            throw new IllegalArgumentException("Weekly cutoff must be Monday");
+        List<Row> out = weekly(rows, cutoffMonday);
+        if (out.isEmpty()) return out;
+        Row last = out.get(out.size()-1);
+        for (LocalDate day = last.date.plusWeeks(1); !day.isAfter(cutoffMonday); day = day.plusWeeks(1))
+            out.add(new Row(day, last.prices));
+        return out;
+    }
+
     public static Row effective(List<Row> rows, LocalDate onDate) {
         double[] p = {Double.NaN,Double.NaN,Double.NaN,Double.NaN}; LocalDate date = null;
         for (Row r : rows) {

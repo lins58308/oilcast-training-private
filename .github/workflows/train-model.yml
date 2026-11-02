@@ -24,6 +24,22 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - name: Verify historical quality and Android contract before signing
+        run: |
+          python3 -m unittest discover -s tests -p 'test_*.py' -v
+          python3 run_training.py --as-of 2026-09-13T13:00:00Z --output output
+          javac --release 11 -cp build/classes:build/json.jar -d build/classes tests/CloudContractTest.java tests/ModelTimelineTest.java tests/ModelTrainingCoverageTest.java tests/NewsHistoryTrainingTest.java tests/ModelDriverEvidenceTest.java
+          java -cp build/classes:build/json.jar ModelTimelineTest
+          java -cp build/classes:build/json.jar ModelTrainingCoverageTest .
+          java -cp build/classes:build/json.jar NewsHistoryTrainingTest
+          java -cp build/classes:build/json.jar ModelDriverEvidenceTest .
+          java -cp build/classes:build/json.jar CloudContractTest .
+          if test -f tests/NeuralLearnerTest.java; then
+            javac --release 11 -cp build/classes:build/json.jar -d build/classes tests/NeuralLearnerTest.java
+            java -cp build/classes:build/json.jar NeuralLearnerTest
+          fi
+          python3 tests/model_quality_report.py output/model.json
+          rm -rf output
       - name: Restore, train, sign, verify and publish
         env:
           MODEL_PUBLIC_REPOSITORY: lins58308/oilcast-models

@@ -94,18 +94,19 @@ public final class MultiLearner {
                 for(int j=0;j<P;j++){m.weights[j]+=part.weights[j]*m.scale[j]/part.scale[j]/3;m.intercept+=part.weights[j]*(m.mean[j]-part.mean[j])/part.scale[j]/3;}}
             d.fits.put(key,m);return m;
         }
-        int start=Math.max(12,origin-156),n=origin-start;m.samples=n;if(n<24)throw new IllegalArgumentException("多來源訓練樣本不足");
+        int start=12,n=origin-start;m.samples=n; // Expanding history without dropping older weeks.
+        if(n<24)throw new IllegalArgumentException("多來源訓練樣本不足");
         if(family==6){
             m.clip=4;
             double[][] x=new double[n][P];double[] y=new double[n];double sum=0;
             for(int i=0;i<n;i++){
-                double w=Math.pow(.5,(n-1-i)/26.0);sum+=w;y[i]=Learner.change(d.rows,start+i+1,fuel);
+                double w=Math.max(.5,Math.pow(.5,(n-1-i)/26.0));sum+=w;y[i]=Learner.change(d.rows,start+i+1,fuel);
                 for(int j=0;j<P;j++){x[i][j]=d.x[fuel][start+i][j];m.mean[j]+=w*x[i][j];}
             }
             for(int j=0;j<P;j++)m.mean[j]/=sum;
             for(int j=0;j<P;j++){
                 double variance=0;
-                for(int i=0;i<n;i++)variance+=Math.pow(.5,(n-1-i)/26.0)*Math.pow(x[i][j]-m.mean[j],2)/sum;
+                for(int i=0;i<n;i++)variance+=Math.max(.5,Math.pow(.5,(n-1-i)/26.0))*Math.pow(x[i][j]-m.mean[j],2)/sum;
                 m.scale[j]=Math.max(1e-5,Math.sqrt(variance));
                 for(int i=0;i<n;i++)x[i][j]=m.standard(x[i][j],j);
             }
@@ -114,7 +115,7 @@ public final class MultiLearner {
         }
         m.clip=family==4?4:0;
         double[][] x=new double[n][P];double[] y=new double[n],sampleWeights=new double[n],zmean=new double[P];double sum=0;
-        for(int i=0;i<n;i++){sampleWeights[i]=family==4?Math.pow(.5,(n-1-i)/26.0):1;sum+=sampleWeights[i];}
+        for(int i=0;i<n;i++){sampleWeights[i]=family==4?Math.max(.5,Math.pow(.5,(n-1-i)/26.0)):1;sum+=sampleWeights[i];}
         for(int i=0;i<n;i++)sampleWeights[i]*=n/sum;
         for(int i=0;i<n;i++){double w=sampleWeights[i]/n;y[i]=Learner.change(d.rows,start+i+1,fuel);m.intercept+=w*y[i];
             for(int j=0;j<P;j++)if(used(j,family)){x[i][j]=d.x[fuel][start+i][j];m.mean[j]+=w*x[i][j];}}
@@ -164,7 +165,7 @@ public final class MultiLearner {
         if(rows.size()<80)throw new IllegalArgumentException("至少需要 80 週歷史");
         Data d=new Data(rows,context,now,progress);int[] done={0};int n=rows.size(),test=n-13,val=Math.max(40,test-39);JSONArray fuels=new JSONArray();
         boolean marketOK=d.marketWeeks>=80&&d.snapshot.values[17]>.99,newsOK=marketOK&&d.newsWeeks>=80&&d.snapshot.values[25]>.99;
-        boolean[] eligible={true,true,marketOK,newsOK,newsOK,newsOK,true};
+        boolean[] eligible={true,true,marketOK,newsOK,newsOK,newsOK,newsOK};
         for(int f=0;f<4;f++){
             JSONArray comparisons=new JSONArray();JSONArray familyList=new JSONArray();
             double[] bestLambda=new double[FAMILY.length],validation=new double[FAMILY.length],validationObjective=new double[FAMILY.length];Learner.Score[] gate=new Learner.Score[FAMILY.length],valScore=new Learner.Score[FAMILY.length];
@@ -186,17 +187,20 @@ public final class MultiLearner {
                 comparisons.put(new JSONObject().put("family",family).put("name",FAMILY[family]).put("lambda",bestLambda[family]).put("validationMae",validation[family]).put("validationObjective",validationObjective[family])
                     .put("validationDirection",valScore[family].direction).put("validationMovementRecall",valScore[family].movementRecall).put("validationFalseMoveRate",valScore[family].falseMoveRate)
                     .put("mae",gate[family].mae).put("direction",gate[family].direction).put("movementRecall",gate[family].movementRecall).put("eligible",eligible[family]));
-                if(eligible[family]&&validation[family]<=validation[0]+.045
-                    &&(validationObjective[family]<validationObjective[candidate]-.001
-                    ||candidate==0&&family==6&&valScore[family].movementRecall>=15
-                        &&valScore[family].falseMoveRate<=55&&validation[family]<=validation[0]+.03))candidate=family;
+                // Promotion uses ONLY earlier rolling validation, not the locked 13-week audit.
+                // A directional win may never compensate for a clearly worse fuel-price MAE.
+                // Require fresh historical market/news coverage for a 26-feature NN.
+                if(eligible[family] && validation[family]+.01<validation[0]
+                    &&valScore[family].direction>=valScore[0].direction-5
+                    &&valScore[family].falseMoveRate<=25
+                    &&validationObjective[family]<validationObjective[candidate]-.001)candidate=family;
             }
             // The latest 13 weeks are a locked out-of-sample audit, never a selection gate.
             int active=candidate;
             Fit fitted=allFits[active],all=allFits[3];
             double base=rows.get(n-1).prices[f],pred=fitted.price(base,d.live[f]);
             Learner.Score calibration=evaluate(d,f,active,bestLambda[active],n-26,n,progress,done);double radius=Math.max(.1,Math.ceil(Learner.quantile(calibration.errors,.8)*10)/10);
-            String decision=active==0?"39 週滾動驗證中，候選未在限定誤差內顯示足夠的方向改善，保留價格不變基準。":"已依前 39 週滾動驗證選用「"+FAMILY[active]+"」，最近 13 週僅用作未參與選模的稽核。";
+            String decision=active==0?"候選未在前 39 週驗證達到更低的 MAE、足夠的漲跌準確率與低誤報率，因此保留價格不變基準。":"已依前 39 週滾動驗證選用「"+FAMILY[active]+"」，最近 13 週僅用作未參與選模的稽核。";
             
             for(int fam=0;fam<FAMILY.length;fam++){
                 double famPred=allFits[fam].price(base,d.live[f]);
@@ -225,9 +229,10 @@ public final class MultiLearner {
                 .put("fit",fitted.json()).put("candidateFit",all.json()).put("candidateEligible",eligible[3]).put("candidateName",FAMILY[3]).put("candidateKind",bestLambda[3])
                 .put("mae",gate[active].mae).put("baselineMae",gate[0].mae).put("candidateMae",gate[3].mae).put("direction",gate[active].direction)
                 .put("movementRecall",gate[active].movementRecall).put("falseMoveRate",gate[active].falseMoveRate)
-                .put("testCount",13).put("validationCount",test-val).put("trainingSamples",Math.min(156,n-13)).put("predicted",pred)
+                .put("testCount",13).put("validationCount",test-val).put("trainingSamples",n-13).put("predicted",pred)
                 .put("lower",Math.max(5,Learner.round(pred-radius))).put("upper",Math.min(100,Learner.round(pred+radius))).put("radius",radius)
                 .put("backtest",gate[active].points).put("comparisons",comparisons).put("decision",decision)
+                .put("historicalDrivers",WeeklyDriverEvidence.analyze(d,f))
                 .put("families",familyList)
                 .put("explanation",fitted.explain(base,d.live[f],now.toString())).put("candidateExplanation",all.explain(base,d.live[f],now.toString())));
         }

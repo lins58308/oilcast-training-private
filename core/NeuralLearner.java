@@ -46,7 +46,7 @@ public final class NeuralLearner {
         for(int i=W3;i<B3;i++)p[i]=rng.nextGaussian()*.12/Math.sqrt(H2);
         return p;
     }
-    /** Full-batch Adam with recency weights, shrinkage and chronological early stopping. */
+    /** Full-batch Adam with bounded recency emphasis (no week underweighted below 50%), shrinkage and chronological early stopping. */
     public static Network fit(double[][] x,double[] y,double decay,long seed){
         if(x.length!=y.length||x.length<32||decay<0||decay>.1)throw new IllegalArgumentException("神經網路訓練樣本異常");
         int hold=Math.max(12,x.length/7),train=x.length-hold;
@@ -66,13 +66,13 @@ public final class NeuralLearner {
     }
     private static double[] sampleWeights(double[] y,int count){
         double[] weights=new double[count];
-        for(int i=0;i<count;i++)weights[i]=Math.pow(.5,(count-1-i)/26.0)*(Math.abs(y[i])>=.049?2.5:1);
+        for(int i=0;i<count;i++)weights[i]=Math.max(.5,Math.pow(.5,(count-1-i)/26.0))*(Math.abs(y[i])>=.049?2.5:1);
         return weights;
     }
     private static double score(double[] p,double[][] x,double[] y,int start,int end){
         Network model=new Network(p);double loss=0,weight=0;
         for(int i=start;i<end;i++){
-            double w=Math.pow(.5,(end-1-i)/26.0)*(Math.abs(y[i])>=.049?2.5:1);
+            double w=Math.max(.5,Math.pow(.5,(end-1-i)/26.0))*(Math.abs(y[i])>=.049?2.5:1);
             loss+=w*Math.abs(model.predict(x[i])-y[i]);weight+=w;
         }
         return loss/Math.max(1e-9,weight);
