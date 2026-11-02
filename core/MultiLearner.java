@@ -199,12 +199,14 @@ public final class MultiLearner {
             int active=candidate;
             Fit fitted=allFits[active],all=allFits[3];
             double base=rows.get(n-1).prices[f],pred=fitted.price(base,d.live[f]);
-            Learner.Score calibration=evaluate(d,f,active,bestLambda[active],n-26,n,progress,done);double radius=Math.max(.1,Math.ceil(Learner.quantile(calibration.errors,.8)*10)/10);
+            // Independently calibrate prediction intervals on a prior 26-week
+            // period, not the locked 13-week audit labels.
+            Learner.Score calibration=evaluate(d,f,active,bestLambda[active],test-26,test,progress,done);double radius=Math.max(.1,Math.ceil(Learner.quantile(calibration.errors,.8)*10)/10);
             String decision=active==0?"候選未在前 39 週驗證達到更低的 MAE、足夠的漲跌準確率與低誤報率，因此保留價格不變基準。":"已依前 39 週滾動驗證選用「"+FAMILY[active]+"」，最近 13 週僅用作未參與選模的稽核。";
             
             for(int fam=0;fam<FAMILY.length;fam++){
                 double famPred=allFits[fam].price(base,d.live[f]);
-                Learner.Score familyErrors=fam==active?calibration:evaluate(d,f,fam,bestLambda[fam],n-26,n,progress,done);
+                Learner.Score familyErrors=fam==active?calibration:evaluate(d,f,fam,bestLambda[fam],test-26,test,progress,done);
                 double famRadius=Math.max(.1,Math.ceil(Learner.quantile(familyErrors.errors,.8)*10)/10);
                 familyList.put(new JSONObject()
                     .put("family",fam)
