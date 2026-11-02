@@ -42,6 +42,19 @@ means the pipeline is internally consistent, **not** that future forecasts are a
    initial outcome and subsequent official corrections without double-counting.
    Signed live accuracy is tracked separately from historical validation.
 
+## Installed Android compatibility blocker
+
+The Java contract tests compile the **proposed shared core**, not an already
+installed Android APK. Older APKs may still generate weekly model input with
+`weekly(rows, nextMonday(today))`. Those APKs can reject the newly corrected
+`weeklyThrough(rows, monday(today))` signed package, especially when CPC has
+published a next-Monday effective price or there was no price change this week.
+Before merging to the live feed, the Android application must adopt the new
+as-of semantics and pass real-device signed download, prediction parity, and
+rollback tests. A passing JVM CI check alone is **not** Android compatibility
+evidence. Keep both PRs in draft and keep the existing stable and pinned test
+releases unchanged until this compatibility work is complete.
+
 ## Automatic promotion is disabled
 
 The quality report is a historical diagnostic. It deliberately sets
