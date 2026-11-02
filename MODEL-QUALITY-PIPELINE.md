@@ -157,3 +157,19 @@ changed-week recall, and false alarms).
 
 The fixture runs are historical and intentionally unsigned demo models.
 Do not insert model private keys, API tokens, or personal App usage data.
+
+## Global conflict and maritime-route impact sources (2026-11-03)
+
+Both v6 and v7 now ingest the general-world-news feeds alongside five
+additional Google News RSS discovery queries: world wars/sanctions, maritime
+blockages including Hormuz/Red Sea/Bab el Mandeb, Suez/Panama/Malacca/Taiwan
+Strait routes, cargo rerouting and port strikes, and Chinese-language global
+transport disruptions. Metadata is deduplicated by source and story title,
+timestamped on availability, and linked to NEXT week's CPC changes.
+
+Routine passage through a canal is not a disruption; an interrupted,
+blocked or rerouted shipment is classified into the existing
+geopolitical/transport risk feature. The 26-feature Android schema remains
+unchanged. Training still compares models to the unchanged-price baseline,
+and each fuel includes historicalDrivers associations, which are not
+causal claims. Signed v6 and isolated v7 releases must be verified separately.
