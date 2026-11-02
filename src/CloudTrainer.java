@@ -30,6 +30,17 @@ public final class CloudTrainer {
         Instant cpcSynced=asOf;
         if(live){
             PublicHttp.begin();try{
+                // Backfill only when historic CPC prices are missing in the retained checkpoint.
+                // A failed official 1999-2019 download FAILS CLOSED instead of signing a
+                // misleading 6-year "full-history" model.
+                if(rows.isEmpty() || rows.get(0).date.isAfter(LocalDate.of(2000,1,1))){
+                    List<OilData.Row> oldOfficial=OilData.fetchHistorical();
+                    rows=OilData.merge(oldOfficial,rows);
+                    List<OilData.Row> check=OilData.weeklyThrough(rows,LocalDate.of(2020,1,6));
+                    if(check.size()<1000)throw new IllegalStateException("1999-2019 CPC weekly coverage failed");
+                    System.out.println("Official CPC archive backfilled: "+oldOfficial.size()
+                        +" effective-price records; "+check.size()+" 20-year weekly observations");
+                }
                 List<OilData.Row> fetched=OilData.fetch();LocalDate day=OilData.today();
                 fetched.removeIf(row->row.date.isAfter(OilData.nextMonday(day)));
                 if(OilData.weeklyThrough(fetched,OilData.monday(day)).size()<80)throw new IllegalArgumentException("CPC history is incomplete");
