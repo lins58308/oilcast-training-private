@@ -70,6 +70,15 @@ jobs:
         run: |
           java -cp build/classes:build/json.jar tw.oilcast.core.SemanticResearchDataset \
             . output/checkpoint.json output/research-dataset.json "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+      - name: Build causally embargoed Dubai and 7D3B benchmark proxy
+        run: |
+          python3 -m py_compile research/official_formula_features.py
+          curl --fail --location --retry 3 --silent --show-error \
+            'https://fred.stlouisfed.org/graph/fredgraph.csv?id=POILDUBUSDM&cosd=1999-01-01' \
+            --output output/dubai.csv
+          python3 research/official_formula_features.py \
+            --dataset output/research-dataset.json --dubai-csv output/dubai.csv \
+            --output output/research-dataset-7d3b.json
       - name: Install CPU/GPU deep learning libraries
         run: |
           if [[ "${VARIANT}" != "v6" && "${VARIANT}" != "v7" ]]; then echo "Invalid variant"; exit 1; fi
@@ -90,7 +99,7 @@ jobs:
           OMP_NUM_THREADS: '2'
         run: |
           python3 research/train_semantic_teacher.py \
-            --dataset output/research-dataset.json \
+            --dataset output/research-dataset-7d3b.json \
             --variant "$VARIANT" \
             --output "output/teacher-$VARIANT" \
             --device auto --epochs 80 --patience 12 --batch-size 16
