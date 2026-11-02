@@ -16,7 +16,7 @@ import org.xml.sax.InputSource;
 
 /** Public market observations and attributed, dated news metadata. No article body is stored. */
 public final class ContextData {
-    public static final String MARKET_URL="https://fred.stlouisfed.org/graph/fredgraph.csv?id=DCOILBRENTEU,DCOILWTICO,DEXTAUS&cosd=2019-01-01";
+    public static final String MARKET_URL="https://fred.stlouisfed.org/graph/fredgraph.csv?id=DCOILBRENTEU,DCOILWTICO,DEXTAUS&cosd=1999-01-01";
     public static final String EIA_RSS="https://www.eia.gov/rss/todayinenergy.xml";
     public static final String CNA_FINANCE="https://feeds.feedburner.com/rsscna/finance";
     public static final String CNA_WORLD="https://feeds.feedburner.com/rsscna/intworld";
@@ -163,7 +163,7 @@ public final class ContextData {
         JSONArray out=new JSONArray();
         for(int i=1;i<lines.length;i++){
             String[] c=lines[i].split(",",-1);if(c.length!=4)throw new IOException("FRED 行情欄位不完整");
-            LocalDate day=LocalDate.parse(c[0]);if(day.isBefore(LocalDate.of(2019,1,1))||day.isAfter(seen.atZone(OilData.TAIPEI).toLocalDate()))continue;
+            LocalDate day=LocalDate.parse(c[0]);if(day.isBefore(LocalDate.of(1999,1,1))||day.isAfter(seen.atZone(OilData.TAIPEI).toLocalDate()))continue;
             JSONArray v=new JSONArray();boolean any=false;
             for(int j=1;j<=3;j++){
                 if(c[j].isEmpty()||c[j].equals(".")){v.put(JSONObject.NULL);continue;}
@@ -192,7 +192,7 @@ public final class ContextData {
                 String[] cols=lines[j].split(",",-1);
                 if(cols.length!=2)throw new IOException("FRED "+ids[i]+" 行情欄位不完整");
                 LocalDate date=LocalDate.parse(cols[0]);
-                if(date.isBefore(LocalDate.of(2019,1,1)))continue;
+                if(date.isBefore(LocalDate.of(1999,1,1)))continue;
                 if(!cols[1].isEmpty()&&!cols[1].equals(".")&&!cols[1].matches("-?[0-9]+(\\.[0-9]+)?"))throw new IOException("FRED "+ids[i]+" 行情數值格式異常");
                 String[] values=joined.computeIfAbsent(date,k->new String[]{".",".","."});
                 values[i]=cols[1].isEmpty()?".":cols[1];
@@ -235,7 +235,7 @@ public final class ContextData {
         String[] ids={"DCOILBRENTEU","DCOILWTICO","DEXTAUS"},urls=new String[3];
         for(int i=0;i<ids.length;i++){
             urls[i]="https://api.stlouisfed.org/fred/series/observations?series_id="+ids[i]
-                +"&observation_start=2019-01-01&file_type=json&api_key="+key;
+                +"&observation_start=1999-01-01&file_type=json&api_key="+key;
         }
         String[] responses=downloadParallel(urls);
         JSONArray observations=parseMarket(mergeFredApiObservations(responses),seen);
@@ -259,7 +259,7 @@ public final class ContextData {
             if(Thread.currentThread().isInterrupted())throw primary;
             try{
                 String[] ids={"DCOILBRENTEU","DCOILWTICO","DEXTAUS"},urls=new String[3];
-                for(int i=0;i<ids.length;i++)urls[i]="https://fred.stlouisfed.org/graph/fredgraph.csv?id="+ids[i]+"&cosd=2019-01-01";
+                for(int i=0;i<ids.length;i++)urls[i]="https://fred.stlouisfed.org/graph/fredgraph.csv?id="+ids[i]+"&cosd=1999-01-01";
                 return parseMarket(mergeFredSeries(downloadParallel(urls)),seen);
             }catch(Exception backup){
                 IOException error=new IOException("FRED 官方 CSV 來源仍無法連線"+(apiError==null?"；可在 GitHub 設定 FRED_API_KEY 啟用官方 API 備援":"；官方 API 也無法更新")+"（"+primary.getClass().getSimpleName()+" / "+backup.getClass().getSimpleName()+"）",backup);
