@@ -406,6 +406,19 @@ def fit_and_report(data, args):
     }
     (output / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2))
     (output / "training-curves.json").write_text(json.dumps(curves, indent=2))
+    # Compact metrics in immutable GitHub logs, so results can be inspected
+    # without downloading a binary artifact through a separate workflow.
+    print(json.dumps({"stage": "audit", "variant": args.variant,
+                      "chronologicalSplit": report["split"],
+                      "selectedExperts": choices,
+                      "validationBaselineMae": val_baseline["mae"],
+                      "validationCalibratedMae": val_selected["mae"],
+                      "lockedBaselineMae": held_baseline["mae"],
+                      "lockedDeepRawMae": held_teacher["mae"],
+                      "lockedRidgeMae": held_ridge["mae"],
+                      "lockedCalibratedMae": held_selected["mae"],
+                      "lockedChangedWeekRecall": held_selected["movingWeekRecallPct"],
+                      "lockedFalseMoveRate": held_selected["falseMovementRatePct"]}), flush=True)
     print(json.dumps({"stage": "complete", "variant": args.variant,
                       "eligible": eligible, "report": str(output / "report.json"),
                       "elapsedSeconds": report["elapsedSeconds"]}), flush=True)
