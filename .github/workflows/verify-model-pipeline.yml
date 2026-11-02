@@ -35,11 +35,12 @@ jobs:
         run: python3 run_training.py --as-of 2026-09-13T13:00:00Z --output output
       - name: Check timeline, chronology and App model contract
         run: |
-          javac --release 11 -cp build/classes:build/json.jar -d build/classes tests/CloudContractTest.java tests/ModelTimelineTest.java tests/ModelTrainingCoverageTest.java tests/NewsHistoryTrainingTest.java tests/ModelDriverEvidenceTest.java tests/SemanticResearchDatasetTest.java tests/CpcHistoricalBackfillTest.java
+          javac --release 11 -cp build/classes:build/json.jar -d build/classes tests/CloudContractTest.java tests/ModelTimelineTest.java tests/ModelTrainingCoverageTest.java tests/NewsHistoryTrainingTest.java tests/ModelDriverEvidenceTest.java tests/PromotionLeakageTest.java tests/SemanticResearchDatasetTest.java tests/CpcHistoricalBackfillTest.java
           java -cp build/classes:build/json.jar ModelTimelineTest
           java -cp build/classes:build/json.jar ModelTrainingCoverageTest .
           java -cp build/classes:build/json.jar NewsHistoryTrainingTest
           java -cp build/classes:build/json.jar ModelDriverEvidenceTest .
+          java -Xmx2g -cp build/classes:build/json.jar PromotionLeakageTest
           java -cp build/classes:build/json.jar SemanticResearchDatasetTest .
           java -cp build/classes:build/json.jar CpcHistoricalBackfillTest
           java -cp build/classes:build/json.jar CpcHistoricalBackfillTest --live
