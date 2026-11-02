@@ -81,6 +81,8 @@ jobs:
             python3 -m pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu 'torch>=2.3,<3'
           fi
           python3 -c "import torch,transformers; print('TORCH',torch.__version__,'GPU',torch.cuda.is_available(),'HF',transformers.__version__)"
+      - name: Validate candidate calibration, abstention and chronology
+        run: python3 -m unittest discover -s research -p 'test_*.py' -v
       - name: Train frozen 0.3B E5 encoder with v6 or v7 temporal teacher
         env:
           HF_HUB_DISABLE_TELEMETRY: '1'
