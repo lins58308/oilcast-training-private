@@ -73,10 +73,11 @@ public final class MultiLearner {
                 for(int j=0;j<P;j++){m.weights[j]+=part.weights[j]*m.scale[j]/part.scale[j]/3;m.intercept+=part.weights[j]*(m.mean[j]-part.mean[j])/part.scale[j]/3;}}
             d.fits.put(key,m);return m;
         }
-        int start=Math.max(12,origin-156),n=origin-start;m.samples=n;if(n<24)throw new IllegalArgumentException("多來源訓練樣本不足");
+        int start=12,n=origin-start;m.samples=n; // Expanding history without dropping older weeks.
+        if(n<24)throw new IllegalArgumentException("多來源訓練樣本不足");
         m.clip=family==4?4:0;
         double[][] x=new double[n][P];double[] y=new double[n],sampleWeights=new double[n],zmean=new double[P];double sum=0;
-        for(int i=0;i<n;i++){sampleWeights[i]=family==4?Math.pow(.5,(n-1-i)/26.0):1;sum+=sampleWeights[i];}
+        for(int i=0;i<n;i++){sampleWeights[i]=family==4?Math.max(.5,Math.pow(.5,(n-1-i)/26.0)):1;sum+=sampleWeights[i];}
         for(int i=0;i<n;i++)sampleWeights[i]*=n/sum;
         for(int i=0;i<n;i++){double w=sampleWeights[i]/n;y[i]=Learner.change(d.rows,start+i+1,fuel);m.intercept+=w*y[i];
             for(int j=0;j<P;j++)if(used(j,family)){x[i][j]=d.x[fuel][start+i][j];m.mean[j]+=w*x[i][j];}}
@@ -162,9 +163,10 @@ public final class MultiLearner {
             fuels.put(new JSONObject().put("fuel",f).put("family",active).put("kind",active==0?-1:bestLambda[active]).put("name",FAMILY[active])
                 .put("fit",fitted.json()).put("candidateFit",all.json()).put("candidateEligible",eligible[3]).put("candidateName",FAMILY[3]).put("candidateKind",bestLambda[3])
                 .put("mae",gate[active].mae).put("baselineMae",gate[0].mae).put("candidateMae",gate[3].mae).put("direction",gate[active].direction)
-                .put("testCount",13).put("validationCount",26).put("trainingSamples",Math.min(156,n-13)).put("predicted",pred)
+                .put("testCount",13).put("validationCount",26).put("trainingSamples",n-13).put("predicted",pred)
                 .put("lower",Math.max(5,Learner.round(pred-radius))).put("upper",Math.min(100,Learner.round(pred+radius))).put("radius",radius)
                 .put("backtest",gate[active].points).put("comparisons",comparisons).put("decision",decision)
+                .put("historicalDrivers",WeeklyDriverEvidence.analyze(d,f))
                 .put("families",familyList)
                 .put("explanation",fitted.explain(base,d.live[f],now.toString())).put("candidateExplanation",all.explain(base,d.live[f],now.toString())));
         }
