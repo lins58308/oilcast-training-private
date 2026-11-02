@@ -25,6 +25,8 @@ public final class ContextData {
         "布蘭特短期變動","WTI 短期變動","美元／台幣短期變動","布蘭特四週變動","布蘭特日變動波動度","布蘭特／WTI 價差","原油與匯率交互變動","行情資料涵蓋率",
         "供給收縮新聞占比","供給增加新聞占比","需求降溫新聞占比","需求增強新聞占比","地緣與運輸新聞占比","庫存與政策新聞占比","新聞數量","歷史新聞涵蓋"};
     public static final int DIM=26;
+    // Retain all collected historical metadata for training; fail instead of silently dropping old stories.
+    public static final int MAX_TRAINING_NEWS=20000, MAX_PUBLIC_NEWS=5000, NEWS_WINDOW_DAYS=28;
     public static final String[] GROUPS={"歷史牌價","國際原油","美元／台幣","原油與匯率交互作用","新聞：供給","新聞：需求","新聞：地緣與運輸","新聞：庫存與政策","資料涵蓋與新聞量"};
     public static int group(int i){if(i<10)return 0;if(i==12)return 2;if(i==16)return 3;if(i==17||i>=24)return 8;if(i<18)return 1;if(i<20)return 4;if(i<22)return 5;if(i==22)return 6;return 7;}
     public static String unit(int i){return i>=10&&i<=16?"%":i>=18&&i<=23||i==17||i==25?"比例":i==24?"log(1+篇數)":"模型特徵";}
@@ -63,10 +65,12 @@ public final class ContextData {
     }
     public static JSONObject article(String title,String link,String source,Instant published,Instant available,boolean archive)throws Exception{
         title=plain(title);if(title.length()>400)title=title.substring(0,400);
-        if(!allowedLink(link)||title.isEmpty()||!RELEVANT.matcher(title).find())return null;
+        if(!allowedLink(link)||title.isEmpty())return null;
+        boolean relevant=RELEVANT.matcher(title).find();
         String id=sha(link);
         return new JSONObject().put("id",id).put("title",title).put("url",link).put("source",source)
-            .put("publishedAt",published.toString()).put("availableAt",available.toString()).put("archive",archive).put("topics",topics(title)).put("uncertain",uncertain(title)).put("classifierVersion",2);
+            .put("publishedAt",published.toString()).put("availableAt",available.toString()).put("archive",archive).put("relevant",relevant)
+            .put("topics",relevant?topics(title):new JSONArray()).put("uncertain",uncertain(title)).put("classifierVersion",2);
     }
     public static JSONArray parseArchive(String html,int year)throws Exception{
         if(!html.contains("Today in Energy")||!html.contains("archive.php?my="+year))throw new IOException("EIA 歷史頁格式變更");
@@ -120,15 +124,17 @@ public final class ContextData {
             if(date.isEmpty())date=tag(e,"date").trim();
             if(date.isEmpty())date=tag(e,"updated").replaceAll("\\s+"," ").trim();
             Instant pub=parsePubDate(date,seen);
-            if(pub==null||pub.isAfter(seen)||pub.isBefore(seen.minusSeconds(90L*86400))){rejectedDates++;continue;}
+            if(pub==null||pub.isAfter(seen)){rejectedDates++;continue;}
             if(!allowedLink(link)){rejectedLinks++;continue;}
             String srcName=publisher(source);
             String sourceTag=tag(e,"source");
             if(!sourceTag.isEmpty())srcName=publisher(sourceTag.trim());
             if(title.endsWith(" - "+sourceTag)&&!sourceTag.isEmpty())title=title.substring(0,title.length()-sourceTag.length()-3);
-            JSONObject a=article(title,link,srcName,pub,seen,false);if(a!=null)out.put(a);else irrelevant++;
+            JSONObject a=article(title,link,srcName,pub,seen,false);
+            if(a!=null){out.put(a);if(!a.getBoolean("relevant"))irrelevant++;}
         }
-        stats.put("rawCount",items.getLength()).put("rejectedLinks",rejectedLinks).put("rejectedDates",rejectedDates).put("irrelevantCount",irrelevant).put("relevantCount",out.length());
+        stats.put("rawCount",items.getLength()).put("rejectedLinks",rejectedLinks).put("rejectedDates",rejectedDates)
+            .put("irrelevantCount",irrelevant).put("retainedCount",out.length()).put("relevantCount",out.length()-irrelevant);
         return out;
     }
     private static Instant parsePubDate(String date,Instant fallback){
@@ -293,11 +299,32 @@ public final class ContextData {
         LinkedHashMap<String,JSONObject> map=new LinkedHashMap<>();Set<String> titles=new HashSet<>();
         for(JSONArray batch:Arrays.asList(old,incoming))for(int i=0;i<batch.length();i++){
             JSONObject a=batch.getJSONObject(i);String normalized=normalizedTitle(a.getString("title"),a.optString("source"));
-            if(map.containsKey(a.getString("id"))||titles.contains(normalized))continue;
-            map.put(a.getString("id"),a);titles.add(normalized);
+            if(map.containsKey(a.getString("id"))||titles.contains(a.optString("source")+":"+normalized))continue;
+            map.put(a.getString("id"),a);titles.add(a.optString("source")+":"+normalized);
         }
-        List<JSONObject> list=new ArrayList<>(map.values());list.sort((a,b)->Instant.parse(a.optString("availableAt")).compareTo(Instant.parse(b.optString("availableAt"))));
-        JSONArray out=new JSONArray();for(int i=Math.max(0,list.size()-5000);i<list.size();i++)out.put(list.get(i));return out;
+        List<JSONObject> list=new ArrayList<>(map.values());
+        list.sort(Comparator.comparing((JSONObject a)->Instant.parse(a.getString("availableAt")))
+            .thenComparing(a->a.getString("id")));
+        if(list.size()>MAX_TRAINING_NEWS)throw new IOException("Historical news exceeds bounded training storage; refusing silent eviction");
+        JSONArray out=new JSONArray();for(JSONObject story:list)out.put(story);return out;
+    }
+    /** Training checkpoint keeps the full dated news archive. Only the articles
+     *  needed to reconstruct today's inference features are placed in the
+     *  size-limited signed Android download. Never use this projection to train. */
+    public static JSONObject publicationView(JSONObject history,Instant asOf)throws Exception{
+        JSONObject result=new JSONObject(history.toString()),original=history;
+        JSONArray archive=original.getJSONArray("news"),recent=new JSONArray();
+        Instant oldest=asOf.minusSeconds(NEWS_WINDOW_DAYS*86400L);
+        for(int i=0;i<archive.length();i++){
+            JSONObject a=archive.getJSONObject(i);
+            Instant published=Instant.parse(a.getString("publishedAt"));
+            Instant available=Instant.parse(a.getString("availableAt"));
+            if(!published.isAfter(oldest)&&!published.equals(oldest))continue;
+            if(published.isAfter(asOf)||available.isAfter(asOf))continue;
+            recent.put(a);
+        }
+        if(recent.length()>MAX_PUBLIC_NEWS)throw new IOException("Recent news exceeds public Android model limit; no silent clipping");
+        result.put("news",recent);return result;
     }
     public static String sha(String s)throws Exception{byte[] b=MessageDigest.getInstance("SHA-256").digest(s.getBytes(StandardCharsets.UTF_8));StringBuilder x=new StringBuilder();for(byte v:b)x.append(String.format(Locale.US,"%02x",v&255));return x.toString();}
     public static String download(String link)throws Exception{
@@ -354,7 +381,7 @@ public final class ContextData {
                 if(error==null){JSONArray rows=(JSONArray)result[1];
                     if(feed[0].equals("market"))out.put("market",mergeMarket(out.getJSONArray("market"),rows,Instant.now()));
                     else{out.put("news",mergeNews(out.getJSONArray("news"),rows));if(feed[0].equals("eiaArchive")){JSONArray old=out.getJSONArray("coverage"),coverage=new JSONArray();for(int j=0;j<old.length();j++)if(old.getJSONObject(j).getInt("year")!=year)coverage.put(old.getJSONObject(j));coverage.put(new JSONObject().put("year",year).put("from",year+"-01-01").put("to",now.atZone(OilData.TAIPEI).toLocalDate().toString()));out.put("coverage",coverage);}}
-                    sourceState(states,feed[0],feed[1],Instant.now(),null);JSONObject stats=(JSONObject)result[3],s=states.getJSONObject(feed[0]);if(!feed[0].equals("market")&&!feed[0].equals("eiaArchive"))for(String key:new String[]{"rawCount","rejectedLinks","rejectedDates","irrelevantCount","relevantCount"})s.put(key,stats.optInt(key));
+                    sourceState(states,feed[0],feed[1],Instant.now(),null);JSONObject stats=(JSONObject)result[3],s=states.getJSONObject(feed[0]);if(!feed[0].equals("market")&&!feed[0].equals("eiaArchive"))for(String key:new String[]{"rawCount","rejectedLinks","rejectedDates","irrelevantCount","relevantCount","retainedCount"})s.put(key,stats.optInt(key));
                 }
                 else sourceState(states,feed[0],feed[1],Instant.now(),error);
                 progress.update("sources",++done,total,-1,-1);
@@ -374,9 +401,9 @@ public final class ContextData {
     private final JSONObject raw;private final JSONArray coverage;private final Map<String,Snapshot> cache=new HashMap<>();
     public ContextData(JSONObject data)throws Exception{
         raw=data;coverage=data.getJSONArray("coverage");JSONArray m=data.getJSONArray("market"),a=data.getJSONArray("news");
-        if(m.length()>16000||a.length()>5000)throw new IOException("本機資料超出容量上限");
+        if(m.length()>16000||a.length()>MAX_TRAINING_NEWS)throw new IOException("本機資料超出容量上限");
         for(int i=0;i<m.length();i++){JSONObject j=m.getJSONObject(i);Market p=new Market();p.date=LocalDate.parse(j.getString("date"));p.available=Instant.parse(j.getString("availableAt"));p.values=new double[3];for(int k=0;k<3;k++)p.values[k]=j.getJSONArray("values").isNull(k)?Double.NaN:j.getJSONArray("values").getDouble(k);market.add(p);}
-        for(int i=0;i<a.length();i++){JSONObject j=new JSONObject(a.getJSONObject(i).toString());News p=new News();p.json=j;p.published=Instant.parse(j.getString("publishedAt"));p.available=Instant.parse(j.getString("availableAt"));JSONArray old=j.getJSONArray("topics");for(int k=0;k<old.length();k++)if(old.getInt(k)<0||old.getInt(k)>=6)throw new IOException("新聞事件類型錯誤");JSONArray t=topics(j.getString("title"));j.put("topics",t).put("uncertain",uncertain(j.getString("title"))).put("classifierVersion",2);p.topics=new int[t.length()];for(int k=0;k<t.length();k++)p.topics[k]=t.getInt(k);news.add(p);}
+        for(int i=0;i<a.length();i++){JSONObject j=new JSONObject(a.getJSONObject(i).toString());News p=new News();p.json=j;p.published=Instant.parse(j.getString("publishedAt"));p.available=Instant.parse(j.getString("availableAt"));JSONArray old=j.getJSONArray("topics");for(int k=0;k<old.length();k++)if(old.getInt(k)<0||old.getInt(k)>=6)throw new IOException("新聞事件類型錯誤");boolean relevant=RELEVANT.matcher(j.getString("title")).find();JSONArray t=relevant?topics(j.getString("title")):new JSONArray();j.put("topics",t).put("relevant",relevant).put("uncertain",uncertain(j.getString("title"))).put("classifierVersion",2);p.topics=new int[t.length()];for(int k=0;k<t.length();k++)p.topics[k]=t.getInt(k);news.add(p);}
     }
     public String fingerprint()throws Exception{return sha(raw.getJSONArray("market").toString()+raw.getJSONArray("news").toString()+coverage.toString());}
     public static final class Snapshot {
@@ -401,10 +428,10 @@ public final class ContextData {
         if(latest[0].length>0&&latest[1].length>0)s.values[15]=100*(latest[0][0]-latest[1][0])/Math.max(5,Math.abs(latest[0][0]));
         s.values[16]=s.values[10]*s.values[12]/100;
         List<News> visible=new ArrayList<>();Set<String> seenTitles=new HashSet<>();Map<String,double[]> bySource=new TreeMap<>();
-        for(News n:news)if(!n.available.isAfter(asof)&&!n.published.isAfter(asof)&&n.published.isAfter(asof.minusSeconds(7*86400L))){
+        for(News n:news)if(!n.available.isAfter(asof)&&!n.published.isAfter(asof)&&n.published.isAfter(asof.minusSeconds(NEWS_WINDOW_DAYS*86400L))){
             String source=publisher(n.json.optString("source")),title=normalizedTitle(n.json.getString("title"),source);
             if(!seenTitles.add(title))continue;
-            double weight=Math.exp(-Duration.between(n.published,asof).toHours()/96.0);
+            double weight=Math.max(.25,Math.exp(-Duration.between(n.published,asof).toHours()/96.0));
             double[] part=bySource.computeIfAbsent(source,k->new double[8]);part[6]+=weight;part[7]++;
             s.count++;for(int t:n.topics)part[t]+=weight;visible.add(n);
         }
