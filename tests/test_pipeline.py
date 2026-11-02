@@ -38,9 +38,9 @@ class PipelineTests(unittest.TestCase):
     def test_publish_assets_before_latest(self):
         row=pipeline.publish(self.api,'model-fixture',self.folder)
         self.assertFalse(row['draft']);self.assertIs(self.api.latest_value,row)
-        self.assertEqual([x[2] for x in self.api.calls if x[0]=='upload'],['model.json','envelope.json','checkpoint.json'])
+        self.assertEqual([x[2] for x in self.api.calls if x[0]=='upload'],['model.json','envelope.json','training-state.json','checkpoint.json'])
         patch=next(i for i,x in enumerate(self.api.calls) if x[0]=='PATCH')
-        self.assertTrue(all(i<patch for i,x in enumerate(self.api.calls) if x[0]=='upload' and x[2] in {'model.json','envelope.json'}))
+        self.assertTrue(all(i<patch for i,x in enumerate(self.api.calls) if x[0]=='upload' and x[2] in {'model.json','envelope.json','training-state.json'}))
     def test_second_asset_failure_keeps_model_unpublished(self):
         self.api.fail_asset='envelope.json'
         with self.assertRaises(RuntimeError):pipeline.publish(self.api,'model-fixture',self.folder)
@@ -68,6 +68,29 @@ class PipelineTests(unittest.TestCase):
         self.api.releases.pop('training-checkpoint');out=self.folder/'restored.json'
         pipeline.restore_checkpoint(self.api,self.api.latest_value,out)
         self.assertEqual(json.loads(out.read_text())['model']['revision'],2)
+    def test_full_news_archive_restores_when_public_model_is_projected(self):
+        # Public Android model has only a fresh news slice. The immutable
+        # training-state asset must preserve the older news from checkpoint.
+        complete={'cloudStateSchema':1,**self.model}
+        complete['multisource']={'news':[{'id':'old-article','publishedAt':'2020-01-01T00:00:00Z'}]}
+        (self.folder/'checkpoint.json').write_text(json.dumps(complete))
+        projected=dict(self.model,trainingNewsArchiveComplete=False)
+        payload=json.dumps(projected).encode()
+        (self.folder/'model.json').write_bytes(payload)
+        self.manifest['payloadSha256']=hashlib.sha256(payload).hexdigest()
+        self.manifest['payloadBytes']=len(payload)
+        self.write_envelope()
+        release=pipeline.publish(self.api,'model-fixture',self.folder)
+        self.api.releases.pop('training-checkpoint')
+        output=self.folder/'restored.json'
+        pipeline.restore_checkpoint(self.api,release,output)
+        self.assertEqual(json.loads(output.read_text())['multisource']['news'][0]['id'],'old-article')
+    def test_projected_public_payload_without_full_archive_fails_closed(self):
+        public=dict(self.model,trainingNewsArchiveComplete=False)
+        row={'assets':[{'name':'model.json','data':json.dumps(public).encode()}]}
+        with self.assertRaisesRegex(RuntimeError,'Full training archive asset missing'):
+            pipeline.restore_checkpoint(self.api,row,self.folder/'not-written.json')
+        self.assertFalse((self.folder/'not-written.json').exists())
     def test_newer_publication_repairs_older_checkpoint(self):
         row=pipeline.publish(self.api,'model-fixture',self.folder);old={'cloudStateSchema':1,**self.model,'model':{'trainedAt':'2026-10-11T03:00:00Z','revision':1}}
         self.api.releases['training-checkpoint']['assets'][0]['data']=json.dumps(old).encode();out=self.folder/'restored.json';pipeline.restore_checkpoint(self.api,row,out)
