@@ -1,4 +1,5 @@
 import java.time.*;
+import java.nio.file.*;
 import java.util.*;
 import org.json.*;
 import tw.oilcast.core.*;
@@ -81,6 +82,29 @@ public final class NewsHistoryTrainingTest {
         ok(rss.length()==1,"trusted RSS stories older than 90 days are no longer discarded");
         ok(rss.getJSONObject(0).getString("availableAt").equals(now),
            "backfilled RSS date is not incorrectly treated as original availability");
+        // Verify that past-news features change the actual fitted oil-price
+        // model, rather than only increasing an unused JSON news counter.
+        Path repo=Path.of(args.length>0?args[0]:".");
+        List<OilData.Row> priceRows=OilData.weeklyThrough(
+            OilData.fromJson(new JSONObject(Files.readString(repo.resolve("data/seed.json"))).getJSONArray("rows")),
+            LocalDate.parse("2026-09-07"));
+        Instant trainingAsOf=Instant.parse("2026-09-13T13:00:00Z");
+        MultiLearner.Data newsData=new MultiLearner.Data(priceRows,ctx,trainingAsOf);
+        MultiLearner.Data noNewsData=new MultiLearner.Data(priceRows,new ContextData(ContextData.empty()),trainingAsOf);
+        int oldWeek=-1;
+        for(int i=0;i<priceRows.size();i++)
+            if(priceRows.get(i).date.equals(LocalDate.parse("2020-05-04")))oldWeek=i;
+        ok(oldWeek>=12&&newsData.x[0][oldWeek][24]>0,
+           "a 2020 article contributes to the 2020 weekly training feature");
+        ok(noNewsData.x[0][oldWeek][24]==0,
+           "the news contribution is absent without that article");
+        MultiLearner.Fit fitted=MultiLearner.fit(newsData,priceRows.size()-1,0,3,3);
+        MultiLearner.Fit baseline=MultiLearner.fit(noNewsData,priceRows.size()-1,0,3,3);
+        double changedWeights=Math.abs(fitted.intercept-baseline.intercept);
+        for(int i=0;i<fitted.weights.length;i++)
+            changedWeights+=Math.abs(fitted.weights[i]-baseline.weights[i]);
+        ok(changedWeights>1e-7,
+           "retained old news actually affects multi-source fit coefficients");
         System.out.println("PASS: "+passed+" full-history news ingestion, causal timestamps and inference parity assertions");
     }
 }
