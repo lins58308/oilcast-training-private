@@ -16,7 +16,6 @@ import random
 import time
 
 import numpy as np
-from cpc_aware_calibration import tie_gasoline, fit_calibration, apply_calibration, indicators
 
 def seed_all(seed, torch):
     random.seed(seed)
@@ -63,7 +62,7 @@ def encode_all(rows, model_id, revision, device, batch_size):
     with torch.inference_mode():
         for start in range(0, len(identifiers), batch_size):
             keys = identifiers[start:start + batch_size]
-            titles = ["query: " + all_news[k] for k in keys]
+            titles = ["passage: " + all_news[k] for k in keys]
             tokens = tokenizer(titles, max_length=128, truncation=True,
                                padding=True, return_tensors="pt").to(device)
             hidden = encoder(**tokens).last_hidden_state
@@ -118,6 +117,13 @@ def train_only_pca(news, end, components=32):
 
 def prepare(rows, semantic, sequence=4):
     numeric = np.array([r["features"] for r in rows], dtype=np.float32)
+    # CPC's 70% Dubai + 30% Brent benchmark is a major omitted driver.
+    # Append only deliberately lagged monthly Dubai proxies, never current
+    # full-month values unavailable at that historical prediction origin.
+    dubai = np.array([r.get("policyProxy", [0., 0., 0., 0.]) for r in rows], dtype=np.float32)
+    if dubai.shape != (len(rows), 4) or not np.isfinite(dubai).all():
+        raise ValueError("Invalid lagged Dubai policy proxies")
+    numeric = np.concatenate((numeric, np.repeat(dubai[:, None, :], 4, axis=1)), axis=2)
     targets = np.array([r["nextWeekDeltas"] for r in rows], dtype=np.float32)
     if not np.isfinite(numeric).all() or not np.isfinite(targets).all():
         raise ValueError("Nonfinite CPC, market, or news features")
@@ -135,18 +141,6 @@ def prepare(rows, semantic, sequence=4):
     sem_std = compressed[:val_start].std(axis=0)
     compressed = np.clip((compressed - sem_mean) / np.maximum(sem_std, .05), -6, 6)
     features = np.concatenate((normal.reshape(n, -1), compressed), axis=1)
-    # Add CPC-style ex-ante BRent/FX proxy and observed availability flags.
-    # Do not call WTI Dubai: a licensed Dubai benchmark is NOT in this dataset.
-    brent_fx = (numeric[:, 0, 10] + numeric[:, 0, 12]
-                 + numeric[:, 0, 10]*numeric[:, 0, 12]/100.0)
-    enough_market = (numeric[:, 0, 17] >= 2/3).astype(np.float32)
-    proxy = brent_fx * enough_market
-    proxy_mean = float(proxy[:val_start].mean())
-    proxy_std = max(float(proxy[:val_start].std()), .1)
-    proxy = np.clip((proxy-proxy_mean)/proxy_std, -6, 6).astype(np.float32)
-    news_present = np.array([float(len(r["news"]) > 0) for r in rows], dtype=np.float32)
-    features = np.concatenate((features, proxy[:, None], enough_market[:, None],
-                               news_present[:, None]), axis=1)
     # Example t gets t-3..t, never input data from t+1.
     x = np.stack([features[i-sequence+1:i+1] for i in range(sequence-1, n)])
     y = targets[sequence-1:]
@@ -167,6 +161,96 @@ def metrics(actual, predicted):
         "movingWeeks": moving.sum(0).tolist(),
         "totalWeeks": len(actual)
     }
+
+def fit_ridge_chronologically(x, y, train_end, tune_end):
+    """Simple small-data challenger; lambda chosen on earlier-only stop period."""
+    design = x[:, -1, :].astype(np.float64)
+    mean = design[:train_end].mean(axis=0)
+    scale = np.maximum(design[:train_end].std(axis=0), .1)
+    z = np.clip((design - mean) / scale, -6, 6)
+    z = np.concatenate([np.ones((len(z), 1)), z], axis=1)
+    # Give all 27 years a nonzero vote while accommodating evolving CPC
+    # stabilization and tax policy; never discard early years.
+    age = train_end - 1 - np.arange(train_end)
+    recency = np.maximum(.5, np.exp(-age / 156.0))
+    gram = z[:train_end].T @ (recency[:, None] * z[:train_end])
+    rhs = z[:train_end].T @ (recency[:, None] * y[:train_end].astype(np.float64))
+    penalize = np.eye(gram.shape[0])
+    penalize[0, 0] = 0
+    best_mae, best_lambda, best_prediction = float("inf"), None, None
+    for lam in (10, 100, 1000, 10000):
+        coef = np.linalg.solve(gram + lam * penalize, rhs)
+        pred = (z @ coef).astype(np.float32)
+        mae = float(np.abs(pred[train_end:tune_end] - y[train_end:tune_end]).mean())
+        if mae < best_mae:
+            best_mae, best_lambda, best_prediction = mae, lam, pred
+    return best_prediction, best_lambda, best_mae
+
+def pool_gasoline_adjustments(predictions):
+    """CPC generally adjusts 92/95/98 by the same TWD/L amount.
+
+    A physics/price-policy challenger, not an unconditional rule for early
+    historical weeks or for unverified announced prices.
+    """
+    out = np.asarray(predictions, dtype=np.float32).copy()
+    if out.ndim != 2 or out.shape[1] != 4:
+        raise ValueError("Four gasoline/diesel outputs required")
+    out[:, :3] = np.mean(out[:, :3], axis=1, keepdims=True)
+    return out
+
+def select_conservative_forecaster(actual_validation, raw_candidates):
+    """Select per-fuel abstention and regularization on validation, NEVER locked test.
+
+    No-change baseline is always allowed. Reject false-change-heavy candidates
+    even when they appear to lower total absolute error on a tiny period.
+    """
+    actual = np.asarray(actual_validation, dtype=np.float32)
+    baseline = metrics(actual, np.zeros_like(actual))
+    all_predictions = {"unchanged": np.zeros_like(actual)}
+    selections = []
+    options = [{"model": "unchanged", "scale": 0.0, "deadZone": 0.0}
+               for _ in range(4)]
+    for name, raw in raw_candidates.items():
+        raw = np.asarray(raw, dtype=np.float32)
+        if raw.shape != actual.shape or not np.isfinite(raw).all():
+            raise ValueError("Invalid predicted delta shape in validation")
+        all_predictions[name] = raw
+    for fuel in range(4):
+        base_mae = float(baseline["mae"][fuel])
+        best_mae = base_mae
+        selected = options[fuel]
+        for name, predictions in all_predictions.items():
+            if name == "unchanged":
+                continue
+            for scale in (0.15, 0.30, 0.50, 0.75, 1.0):
+                for cutoff in (0.05, 0.10, 0.20, 0.30):
+                    prediction = predictions[:, fuel] * scale
+                    prediction = np.where(np.abs(prediction) < cutoff, 0.0, prediction)
+                    m = metrics(actual[:, [fuel]], prediction.reshape(-1, 1))
+                    mae = float(m["mae"][0])
+                    if (mae + 0.01 < best_mae
+                        and m["directionAccuracyPct"][0] >=
+                            baseline["directionAccuracyPct"][fuel] - 5
+                        and m["falseMovementRatePct"][0] <= 25
+                        and m["movingWeekRecallPct"][0] > 0):
+                        best_mae = mae
+                        selected = {"model": name, "scale": scale, "deadZone": cutoff}
+        selections.append({"fuel": fuel, **selected,
+                           "validationMae": round(best_mae, 5),
+                           "baselineValidationMae": base_mae,
+                           "approved": selected["model"] != "unchanged"})
+    return selections
+
+def apply_selections(raw_candidates, selections, length):
+    out = np.zeros((length, 4), dtype=np.float32)
+    for entry in selections:
+        fuel = entry["fuel"]
+        if entry["model"] == "unchanged":
+            continue
+        raw = np.asarray(raw_candidates[entry["model"]])[:, fuel]
+        delta = raw * entry["scale"]
+        out[:, fuel] = np.where(np.abs(delta) < entry["deadZone"], 0, delta)
+    return out
 
 def make_model(variant, features, torch):
     nn = torch.nn
@@ -208,9 +292,14 @@ def fit_and_report(data, args):
                       "embeddingDimension": dim, "checkpoint": commit, "device": str(device)}), flush=True)
     semantic = weekly_embeddings(rows, vectors, dim)
     x, y, val_start, test_start, _ = prepare(rows, semantic)
-    confirmation_start = test_start - 13
-    if confirmation_start - val_start < 20:
-        raise ValueError("Need 26 development weeks before independent confirmation")
+    # Strict chronological nested split: core fit / early stopping / selection
+    # / final 13-week blind audit. Never reuse early-stop weeks to select
+    # the model family or output threshold.
+    stop_start = val_start - 52
+    if stop_start < 60:
+        raise ValueError("Need at least 60 training weeks before 52-week stopping window")
+    ridge_prediction, ridge_lambda, ridge_stop_mae = fit_ridge_chronologically(
+        x, y, stop_start, val_start)
     tensors = torch.from_numpy(x).to(device)
     expected = torch.from_numpy(y).to(device)
     model = make_model(args.variant, x.shape[-1], torch).to(device)
@@ -220,17 +309,18 @@ def fit_and_report(data, args):
     curves = []
     for epoch in range(1, args.epochs + 1):
         model.train()
-        order = torch.randperm(val_start, device=device)
+        order = torch.randperm(stop_start, device=device)
         losses = []
         for indices in order.split(args.batch_size):
             prediction = model(tensors[indices])
-            # CPC's three unleaded grades share a common weekly adjustment.
-            gas = prediction[:, :3].mean(dim=1, keepdim=True)
-            prediction = torch.cat((gas.repeat(1, 3), prediction[:, 3:]), dim=1)
             label = expected[indices]
             smooth = torch.nn.functional.smooth_l1_loss(prediction, label, reduction="none", beta=.25)
-            weight = torch.where(label.abs() >= .049, 2.0, 1.0)
-            loss = (smooth * weight).mean()
+            # Lower aggressive 'changed week' oversampling; reduce false alarms.
+            weight = torch.where(label.abs() >= .049, 1.15, 1.0)
+            age = (stop_start - 1 - indices).to(torch.float32)
+            historical_weight = torch.maximum(torch.full_like(age, .5), torch.exp(-age / 156.0))
+            loss = (smooth * weight * historical_weight.unsqueeze(-1)).sum() / (
+                historical_weight.sum() * label.shape[-1])
             if not torch.isfinite(loss):
                 raise ValueError("Numerical instability in deep model")
             optimizer.zero_grad(set_to_none=True)
@@ -240,8 +330,8 @@ def fit_and_report(data, args):
             losses.append(float(loss.detach().cpu()))
         model.eval()
         with torch.inference_mode():
-            valid_pred = tie_gasoline(model(tensors[val_start:confirmation_start]).cpu().numpy())
-        valid_loss = float(np.abs(valid_pred - y[val_start:confirmation_start]).mean())
+            valid_pred = model(tensors[stop_start:val_start]).cpu().numpy()
+        valid_loss = float(np.abs(valid_pred - y[stop_start:val_start]).mean())
         curves.append({"epoch": epoch, "trainLoss": float(np.mean(losses)),
                        "validationMae": valid_loss})
         if valid_loss < best_loss - 1e-5:
@@ -256,37 +346,34 @@ def fit_and_report(data, args):
     model.load_state_dict(best_state)
     model.eval()
     with torch.inference_mode():
-        development_predictions = tie_gasoline(model(tensors[val_start:confirmation_start]).cpu().numpy())
-        confirmation_predictions = tie_gasoline(model(tensors[confirmation_start:test_start]).cpu().numpy())
-        held_prediction = tie_gasoline(model(tensors[test_start:]).cpu().numpy())
-    dev_labels = y[val_start:confirmation_start]
-    confirm_labels = y[confirmation_start:test_start]
-    holdout_labels = y[test_start:]
-    # CPC-grade shared forecast, with shrinkage / price-step threshold
-    # selected on the 26-week development sample, independently confirmed
-    # on the following 13 weeks. The last 13 weeks remain a LOCKED audit.
-    calibration, group_report = fit_calibration(
-        dev_labels, development_predictions, confirm_labels, confirmation_predictions)
-    selected_confirm = apply_calibration(confirmation_predictions, calibration)
-    selected_holdout = apply_calibration(held_prediction, calibration)
-    val_baseline = metrics(dev_labels, np.zeros_like(dev_labels))
-    val_teacher = metrics(dev_labels, development_predictions)
-    held_baseline = metrics(holdout_labels, np.zeros_like(holdout_labels))
-    held_teacher = metrics(holdout_labels, held_prediction)
-    eligible = [calibration[0] > 0]*3 + [calibration[1] > 0]
-    print(json.dumps({
-        "stage": "chronological_gates", "variant": args.variant,
-        "developmentBaseline": val_baseline["mae"],
-        "developmentTeacher": val_teacher["mae"],
-        "confirmation": {
-            "baseline": indicators(confirm_labels, np.zeros_like(confirm_labels)),
-            "teacher": indicators(confirm_labels, confirmation_predictions),
-            "calibrated": indicators(confirm_labels, selected_confirm)},
-        "lockedHoldout": {
-            "baseline": held_baseline, "teacher": held_teacher,
-            "calibrated": indicators(holdout_labels, selected_holdout)},
-        "selection": group_report,
-        "promote": eligible}), flush=True)
+        val_prediction = model(tensors[val_start:test_start]).cpu().numpy()
+        held_prediction = model(tensors[test_start:]).cpu().numpy()
+    val_baseline = metrics(y[val_start:test_start], np.zeros_like(y[val_start:test_start]))
+    val_teacher = metrics(y[val_start:test_start], val_prediction)
+    val_ridge = metrics(y[val_start:test_start], ridge_prediction[val_start:test_start])
+    held_baseline = metrics(y[test_start:], np.zeros_like(y[test_start:]))
+    held_teacher = metrics(y[test_start:], held_prediction)
+    held_ridge = metrics(y[test_start:], ridge_prediction[test_start:])
+    # Compare the legal gasoline-equal-adjustment candidate as well as
+    # independent fuel heads; selection uses only the earlier 39 weeks.
+    val_candidates = {
+        "deep": val_prediction,
+        "deepGasolineShared": pool_gasoline_adjustments(val_prediction),
+        "ridge": ridge_prediction[val_start:test_start],
+        "ridgeGasolineShared": pool_gasoline_adjustments(ridge_prediction[val_start:test_start]),
+    }
+    held_candidates = {
+        "deep": held_prediction,
+        "deepGasolineShared": pool_gasoline_adjustments(held_prediction),
+        "ridge": ridge_prediction[test_start:],
+        "ridgeGasolineShared": pool_gasoline_adjustments(ridge_prediction[test_start:]),
+    }
+    choices = select_conservative_forecaster(y[val_start:test_start], val_candidates)
+    calibrated_validation = apply_selections(val_candidates, choices, test_start - val_start)
+    calibrated_heldout = apply_selections(held_candidates, choices, len(y) - test_start)
+    val_selected = metrics(y[val_start:test_start], calibrated_validation)
+    held_selected = metrics(y[test_start:], calibrated_heldout)
+    eligible = [choice["approved"] for choice in choices]
     output = Path(args.output)
     output.mkdir(parents=True, exist_ok=True)
     save_file({k: v.contiguous() for k, v in best_state.items()}, str(output / "semantic-teacher.safetensors"))
@@ -295,21 +382,23 @@ def fit_and_report(data, args):
         "pretrainedEncoder": args.encoder, "encoderRevision": commit,
         "encoderFrozen": True, "device": str(device),
         "weeklyExamples": len(rows), "uniqueNews": len(vectors),
-        "numericalFeaturesPerFuel": 26, "newsPcaDimensions": 32,
+        "numericalFeaturesPerFuel": 30, "originalAndroidFeatureDimension": 26,
+        "dubaiProxy": data.get("policyProxyProvenance", {"missing": True}),
+        "dubaiWeeks": int(sum(r.get("policyProxy", [0., 0., 0., 0.])[-1] > 0 for r in rows)),
+        "newsPcaDimensions": 32,
         "temporalWeeks": 4, "predicts": "next-Monday CPC delta for each of 4 fuels",
         "forecasterParameters": params, "bestEpoch": chosen,
         "lastEpoch": len(curves), "elapsedSeconds": round(time.monotonic() - started, 2),
-        "developmentValidation26Weeks": {"baseline": val_baseline, "teacher": val_teacher},
-        "confirmation13Weeks": {
-            "baseline": metrics(confirm_labels, np.zeros_like(confirm_labels)),
-            "teacher": metrics(confirm_labels, confirmation_predictions),
-            "calibrated": metrics(confirm_labels, selected_confirm)},
-        "lockedHoldout13Weeks": {
-            "baseline": held_baseline, "teacher": held_teacher,
-            "calibrated": metrics(holdout_labels, selected_holdout)},
-        "cpcGradePolicy": "Shared 92/95/98 gasoline delta; separate diesel",
-        "physicsProxy": "Brent/FX only, never claimed to be 70% Dubai/30% Brent",
-        "calibrationPolicies": group_report,
+        "split": {"trainCoreWeeks": stop_start, "earlyStopWeeks": val_start-stop_start,
+                  "selectionWeeks": test_start-val_start, "blindHoldoutWeeks": len(y)-test_start},
+        "historicalSampleWeight": "max(0.5, exp(-weeklyAge/156)); all 27 years used",
+        "modelSelection": choices,
+        "simpleRidge": {"chosenLambdaOnEarlyStop": ridge_lambda,
+                        "earlyStopMae": round(ridge_stop_mae, 5)},
+        "validation": {"baseline": val_baseline, "deepRaw": val_teacher,
+                       "ridge": val_ridge, "selectedCalibrated": val_selected},
+        "lockedHoldout13Weeks": {"baseline": held_baseline, "deepRaw": held_teacher,
+                                "ridge": held_ridge, "selectedCalibrated": held_selected},
         "validationApprovedByFuel": eligible,
         "automaticProductionPromotion": False,
         "timingWarning": "Historical news uses its first known availability; older RSS cannot be backdated.",
@@ -317,6 +406,19 @@ def fit_and_report(data, args):
     }
     (output / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2))
     (output / "training-curves.json").write_text(json.dumps(curves, indent=2))
+    # Compact metrics in immutable GitHub logs, so results can be inspected
+    # without downloading a binary artifact through a separate workflow.
+    print(json.dumps({"stage": "audit", "variant": args.variant,
+                      "chronologicalSplit": report["split"],
+                      "selectedExperts": choices,
+                      "validationBaselineMae": val_baseline["mae"],
+                      "validationCalibratedMae": val_selected["mae"],
+                      "lockedBaselineMae": held_baseline["mae"],
+                      "lockedDeepRawMae": held_teacher["mae"],
+                      "lockedRidgeMae": held_ridge["mae"],
+                      "lockedCalibratedMae": held_selected["mae"],
+                      "lockedChangedWeekRecall": held_selected["movingWeekRecallPct"],
+                      "lockedFalseMoveRate": held_selected["falseMovementRatePct"]}), flush=True)
     print(json.dumps({"stage": "complete", "variant": args.variant,
                       "eligible": eligible, "report": str(output / "report.json"),
                       "elapsedSeconds": report["elapsedSeconds"]}), flush=True)
