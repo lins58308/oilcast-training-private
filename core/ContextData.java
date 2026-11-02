@@ -30,13 +30,13 @@ public final class ContextData {
     public static final String[] GROUPS={"歷史牌價","國際原油","美元／台幣","原油與匯率交互作用","新聞：供給","新聞：需求","新聞：地緣與運輸","新聞：庫存與政策","資料涵蓋與新聞量"};
     public static int group(int i){if(i<10)return 0;if(i==12)return 2;if(i==16)return 3;if(i==17||i>=24)return 8;if(i<18)return 1;if(i<20)return 4;if(i<22)return 5;if(i==22)return 6;return 7;}
     public static String unit(int i){return i>=10&&i<=16?"%":i>=18&&i<=23||i==17||i==25?"比例":i==24?"log(1+篇數)":"模型特徵";}
-    private static final Pattern RELEVANT=Pattern.compile("\\b(oil|crude|petroleum|gasoline|diesel|opec|hormuz|refiner\\w*|tanker\\w*|inflation|recession|energy|fuel|brent|wti)\\b|原油|油價|石油|汽油|柴油|中油|台塑|天然氣|能源|期貨|荷姆茲|霍爾木茲|減產|增產|通膨|聯準會|美元|台幣|央行|地緣政治",Pattern.CASE_INSENSITIVE);
+    private static final Pattern RELEVANT=Pattern.compile("\\b(oil|crude|petroleum|gasoline|diesel|opec|hormuz|refiner\\w*|tanker\\w*|inflation|recession|energy|fuel|brent|wti|war|conflict|sanctions?|shipping|freight|maritime|blockade|port|route|suez|panama|malacca|strait|supply.chain)\\b|原油|油價|石油|汽油|柴油|中油|台塑|天然氣|能源|期貨|荷姆茲|霍爾木茲|減產|增產|通膨|聯準會|美元|台幣|央行|地緣政治|戰爭|衝突|軍事|制裁|海運|航運|航線|航道|港口|罷工|封鎖|紅海|蘇伊士|巴拿馬運河|馬六甲|台灣海峽|運輸中斷|物流|塞港|供應鏈|運費|中東",Pattern.CASE_INSENSITIVE);
     private static final String[] RULES={
         "減產|供應中斷|供給中斷|停產|限產|\\b(production|output|supply)\\b.{0,45}\\b(cut\\w*|declin\\w*|decreas\\w*|fall\\w*|fell|lower|drop\\w*)\\b|\\b(cut\\w*|declin\\w*|decreas\\w*|lower|reduc\\w*)\\b.{0,40}\\b(production|output|supply)\\b",
         "增產|供給增加|供應增加|復產|\\b(production|output|supply)\\b.{0,45}\\b(increas\\w*|grow\\w*|ris\\w*|rose|record|higher)\\b|\\b(increas\\w*|grow\\w*|ris\\w*|record|higher)\\b.{0,40}\\b(production|output|supply)\\b",
         "需求疲弱|需求減|需求降|需求放緩|衰退|\\b(demand|consumption|imports)\\b.{0,40}\\b(declin\\w*|decreas\\w*|fall\\w*|fell|lower|weak\\w*|less)\\b|\\b(recession|weak demand|lower demand)\\b",
         "需求增|需求升|需求強|需求回升|\\b(demand|consumption|imports)\\b.{0,40}\\b(increas\\w*|grow\\w*|ris\\w*|rose|record|higher)\\b|\\b(strong demand|higher demand)\\b",
-        "戰爭|遇襲|封鎖|制裁|荷姆茲|霍爾木茲|紅海|油輪|颶風|\\b(war|conflict|sanctions?|hormuz|attack\\w*|disrupt\\w*|tanker\\w*|hurricane|red sea|chokepoint\\w*)\\b",
+        "戰爭|遇襲|封鎖|制裁|荷姆茲|霍爾木茲|紅海|油輪|颶風|\\b(war|conflict|sanctions?|hormuz|attack\\w*|disrupt\\w*|tanker\\w*|hurricane|red sea|chokepoint\\w*)\\b|航線中斷|航道封鎖|航運受阻|船隻改道|貨輪改道|港口關閉|港口罷工|貨櫃塞港|港口壅塞|船期延誤|紅海危機|台海衝突|俄烏戰爭|中東衝突|軍事打擊|空襲|飛彈襲擊|封港|運河堵塞|\\b(shipping|freight|container|vessel|maritime|port|suez|panama|malacca|hormuz|bab.el.mandeb|taiwan.strait)\\b.{0,70}\\b(disrupt\\w*|delay\\w*|block\\w*|clos\\w*|attack\\w*|divert\\w*|rerout\\w*|congest\\w*|strike\\w*|halt\\w*)\\b|\\b(disrupt\\w*|delay\\w*|block\\w*|clos\\w*|attack\\w*|divert\\w*|rerout\\w*|congest\\w*|strike\\w*|halt\\w*)\\b.{0,70}\\b(shipping|freight|container|vessel|maritime|port|suez|panama|malacca|hormuz|bab.el.mandeb|taiwan.strait)\\b",
         "庫存|央行|利率|通膨|聯準會|穩定機制|凍漲|吸收|補貼|\\b(inventor\\w*|stocks?|reserves?|policy|tariffs?|inflation|interest rates?|federal reserve|subsid\\w*)\\b"};
     private static final Pattern[] EVENT_RULES=Arrays.stream(RULES).map(r->Pattern.compile(r,Pattern.CASE_INSENSITIVE)).toArray(Pattern[]::new);
     private static final Pattern UNCERTAIN=Pattern.compile("\\b(not|no longer|won't|unlikely|den(?:y|ies|ied|ial)|ruled? out|reject\\w*|cancel\\w*|rumou?r\\w*|may|might|could|consider\\w*|potential)\\b|不會|不減產|不增產|未減產|未增產|取消|否認|闢謠|傳聞|可能|考慮|擬減產|擬增產|[?？]",Pattern.CASE_INSENSITIVE);
@@ -337,6 +337,11 @@ public final class ContextData {
             {"cnaWorld","中央社：國際焦點",CNA_WORLD},
             {"googleOilTw","全網即時：油價與中油新聞","https://news.google.com/rss/search?q=%E6%B2%B9%E5%83%B9+OR+%E5%8E%9F%E6%B2%B9+OR+%E4%B8%AD%E6%B2%B9+OR+%E6%9F%B4%E6%B2%B9&hl=zh-TW&gl=TW&ceid=TW:zh-Hant"},
             {"googleEnergyEn","全球快訊：國際原油與OPEC","https://news.google.com/rss/search?q=crude+oil+OR+brent+crude+OR+opec+petroleum+price&hl=en-US&gl=US&ceid=US:en"},
+            {"globalWarsEn","全球戰爭與經濟制裁","https://news.google.com/rss/search?q=war+OR+armed+conflict+OR+military+strikes+OR+sanctions+OR+ceasefire&hl=en-US&gl=US&ceid=US:en"},
+            {"maritimeRiskEn","全球航運中斷與重要海峽","https://news.google.com/rss/search?q=shipping+disruption+OR+port+closure+OR+Red+Sea+shipping+OR+Strait+of+Hormuz+OR+Bab+el+Mandeb&hl=en-US&gl=US&ceid=US:en"},
+            {"globalRoutesEn","蘇伊士巴拿馬運河與國際航線","https://news.google.com/rss/search?q=Suez+Canal+OR+Panama+Canal+OR+Strait+of+Malacca+OR+Taiwan+Strait+shipping&hl=en-US&gl=US&ceid=US:en"},
+            {"supplyChainsEn","港口罷工海運費率與全球供應鏈","https://news.google.com/rss/search?q=port+strike+OR+shipping+delays+OR+cargo+rerouting+OR+freight+rates+OR+supply+chain+disruption&hl=en-US&gl=US&ceid=US:en"},
+            {"globalWarsTw","全球戰爭海運航線與運輸風險（繁中）","https://news.google.com/rss/search?q=%E6%88%B0%E7%88%AD+OR+%E6%B5%B7%E9%81%8B%E5%8F%97%E9%98%BB+OR+%E8%88%AA%E7%B7%9A%E4%B8%AD%E6%96%B7+OR+%E7%B4%85%E6%B5%B7%E5%8D%B1%E6%A9%9F+OR+%E8%98%87%E4%BC%8A%E5%A3%AB%E9%81%8B%E6%B2%B3+OR+%E6%B8%AF%E5%8F%A3%E5%B0%81%E9%8E%96&hl=zh-TW&gl=TW&ceid=TW:zh-Hant"},
             {"yahooFinanceTw","Yahoo奇摩：產經新聞","https://tw.news.yahoo.com/rss/finance"},
             {"udnEnergy","經濟日報：能源期貨","https://money.udn.com/rssfeed/news/1001/5591"},
             {"bbcBusiness","BBC：財經新聞","https://feeds.bbci.co.uk/news/business/rss.xml"},
