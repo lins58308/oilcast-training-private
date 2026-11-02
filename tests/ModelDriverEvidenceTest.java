@@ -34,8 +34,8 @@ public final class ModelDriverEvidenceTest {
             if(!row.getBoolean("ready"))ok(row.getString("causality").contains("不能單獨判定因果"),"insufficient evidence is not causal proof");
         }
         JSONObject supply=factors.getJSONObject(3); // feature 18, supply cuts
-        ok(supply.getInt("featureIndex")==18&&supply.getInt("signalWeeks")==1,"one genuinely available supply-cut origin is counted");
-        ok(supply.getInt("observedWeeks")==1,"weeks without news are missing, not negative news evidence");
+        ok(supply.getInt("featureIndex")==18&&supply.getInt("signalWeeks")>=1&&supply.getInt("signalWeeks")<=4,"the story influences only its subsequent 28-day Monday origins");
+        ok(supply.getInt("observedWeeks")==supply.getInt("signalWeeks"),"weeks without news are missing, not negative news evidence");
         ok(!supply.getBoolean("ready"),"one news item cannot yield a reliable historical association");
         MultiLearner.Data futureLeak=new MultiLearner.Data(history,new ContextData(
             ContextData.empty().put("news",new JSONArray().put(news("2020-05-03T02:00:00Z","2026-10-01T00:00:00Z")))),
