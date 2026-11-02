@@ -155,6 +155,80 @@ def metrics(actual, predicted):
         "totalWeeks": len(actual)
     }
 
+def fit_ridge_chronologically(x, y, train_end, tune_end):
+    """Simple small-data challenger; lambda chosen on earlier-only stop period."""
+    design = x[:, -1, :].astype(np.float64)
+    mean = design[:train_end].mean(axis=0)
+    scale = np.maximum(design[:train_end].std(axis=0), .1)
+    z = np.clip((design - mean) / scale, -6, 6)
+    z = np.concatenate([np.ones((len(z), 1)), z], axis=1)
+    gram = z[:train_end].T @ z[:train_end]
+    rhs = z[:train_end].T @ y[:train_end].astype(np.float64)
+    penalize = np.eye(gram.shape[0])
+    penalize[0, 0] = 0
+    best_mae, best_lambda, best_prediction = float("inf"), None, None
+    for lam in (10, 100, 1000, 10000):
+        coef = np.linalg.solve(gram + lam * penalize, rhs)
+        pred = (z @ coef).astype(np.float32)
+        mae = float(np.abs(pred[train_end:tune_end] - y[train_end:tune_end]).mean())
+        if mae < best_mae:
+            best_mae, best_lambda, best_prediction = mae, lam, pred
+    return best_prediction, best_lambda, best_mae
+
+def select_conservative_forecaster(actual_validation, raw_candidates):
+    """Select per-fuel abstention and regularization on validation, NEVER locked test.
+
+    No-change baseline is always allowed. Reject false-change-heavy candidates
+    even when they appear to lower total absolute error on a tiny period.
+    """
+    actual = np.asarray(actual_validation, dtype=np.float32)
+    baseline = metrics(actual, np.zeros_like(actual))
+    all_predictions = {"unchanged": np.zeros_like(actual)}
+    selections = []
+    options = [{"model": "unchanged", "scale": 0.0, "deadZone": 0.0}
+               for _ in range(4)]
+    for name, raw in raw_candidates.items():
+        raw = np.asarray(raw, dtype=np.float32)
+        if raw.shape != actual.shape or not np.isfinite(raw).all():
+            raise ValueError("Invalid predicted delta shape in validation")
+        all_predictions[name] = raw
+    for fuel in range(4):
+        base_mae = float(baseline["mae"][fuel])
+        best_mae = base_mae
+        selected = options[fuel]
+        for name, predictions in all_predictions.items():
+            if name == "unchanged":
+                continue
+            for scale in (0.15, 0.30, 0.50, 0.75, 1.0):
+                for cutoff in (0.05, 0.10, 0.20, 0.30):
+                    prediction = predictions[:, fuel] * scale
+                    prediction = np.where(np.abs(prediction) < cutoff, 0.0, prediction)
+                    m = metrics(actual[:, [fuel]], prediction.reshape(-1, 1))
+                    mae = float(m["mae"][0])
+                    if (mae + 0.01 < best_mae
+                        and m["directionAccuracyPct"][0] >=
+                            baseline["directionAccuracyPct"][fuel] - 5
+                        and m["falseMovementRatePct"][0] <= 25
+                        and m["movingWeekRecallPct"][0] > 0):
+                        best_mae = mae
+                        selected = {"model": name, "scale": scale, "deadZone": cutoff}
+        selections.append({"fuel": fuel, **selected,
+                           "validationMae": round(best_mae, 5),
+                           "baselineValidationMae": base_mae,
+                           "approved": selected["model"] != "unchanged"})
+    return selections
+
+def apply_selections(raw_candidates, selections, length):
+    out = np.zeros((length, 4), dtype=np.float32)
+    for entry in selections:
+        fuel = entry["fuel"]
+        if entry["model"] == "unchanged":
+            continue
+        raw = np.asarray(raw_candidates[entry["model"]])[:, fuel]
+        delta = raw * entry["scale"]
+        out[:, fuel] = np.where(np.abs(delta) < entry["deadZone"], 0, delta)
+    return out
+
 def make_model(variant, features, torch):
     nn = torch.nn
     class MlpTeacher(nn.Module):
@@ -195,6 +269,14 @@ def fit_and_report(data, args):
                       "embeddingDimension": dim, "checkpoint": commit, "device": str(device)}), flush=True)
     semantic = weekly_embeddings(rows, vectors, dim)
     x, y, val_start, test_start, _ = prepare(rows, semantic)
+    # Strict chronological nested split: core fit / early stopping / selection
+    # / final 13-week blind audit. Never reuse early-stop weeks to select
+    # the model family or output threshold.
+    stop_start = val_start - 52
+    if stop_start < 60:
+        raise ValueError("Need at least 60 training weeks before 52-week stopping window")
+    ridge_prediction, ridge_lambda, ridge_stop_mae = fit_ridge_chronologically(
+        x, y, stop_start, val_start)
     tensors = torch.from_numpy(x).to(device)
     expected = torch.from_numpy(y).to(device)
     model = make_model(args.variant, x.shape[-1], torch).to(device)
@@ -204,13 +286,14 @@ def fit_and_report(data, args):
     curves = []
     for epoch in range(1, args.epochs + 1):
         model.train()
-        order = torch.randperm(val_start, device=device)
+        order = torch.randperm(stop_start, device=device)
         losses = []
         for indices in order.split(args.batch_size):
             prediction = model(tensors[indices])
             label = expected[indices]
             smooth = torch.nn.functional.smooth_l1_loss(prediction, label, reduction="none", beta=.25)
-            weight = torch.where(label.abs() >= .049, 2.0, 1.0)
+            # Lower aggressive 'changed week' oversampling; reduce false alarms.
+            weight = torch.where(label.abs() >= .049, 1.15, 1.0)
             loss = (smooth * weight).mean()
             if not torch.isfinite(loss):
                 raise ValueError("Numerical instability in deep model")
@@ -221,8 +304,8 @@ def fit_and_report(data, args):
             losses.append(float(loss.detach().cpu()))
         model.eval()
         with torch.inference_mode():
-            valid_pred = model(tensors[val_start:test_start]).cpu().numpy()
-        valid_loss = float(np.abs(valid_pred - y[val_start:test_start]).mean())
+            valid_pred = model(tensors[stop_start:val_start]).cpu().numpy()
+        valid_loss = float(np.abs(valid_pred - y[stop_start:val_start]).mean())
         curves.append({"epoch": epoch, "trainLoss": float(np.mean(losses)),
                        "validationMae": valid_loss})
         if valid_loss < best_loss - 1e-5:
@@ -241,15 +324,22 @@ def fit_and_report(data, args):
         held_prediction = model(tensors[test_start:]).cpu().numpy()
     val_baseline = metrics(y[val_start:test_start], np.zeros_like(y[val_start:test_start]))
     val_teacher = metrics(y[val_start:test_start], val_prediction)
+    val_ridge = metrics(y[val_start:test_start], ridge_prediction[val_start:test_start])
     held_baseline = metrics(y[test_start:], np.zeros_like(y[test_start:]))
     held_teacher = metrics(y[test_start:], held_prediction)
-    # Promotions are per fuel, and use VALIDATION only. Holdout stays blind.
-    eligible = []
-    for f in range(4):
-        eligible.append(bool(
-            val_teacher["mae"][f] + .01 < val_baseline["mae"][f]
-            and val_teacher["directionAccuracyPct"][f] >= val_baseline["directionAccuracyPct"][f] - 5
-            and val_teacher["falseMovementRatePct"][f] <= 25))
+    held_ridge = metrics(y[test_start:], ridge_prediction[test_start:])
+    choices = select_conservative_forecaster(
+        y[val_start:test_start],
+        {"deep": val_prediction, "ridge": ridge_prediction[val_start:test_start]})
+    calibrated_validation = apply_selections(
+        {"deep": val_prediction, "ridge": ridge_prediction[val_start:test_start]},
+        choices, test_start - val_start)
+    calibrated_heldout = apply_selections(
+        {"deep": held_prediction, "ridge": ridge_prediction[test_start:]},
+        choices, len(y) - test_start)
+    val_selected = metrics(y[val_start:test_start], calibrated_validation)
+    held_selected = metrics(y[test_start:], calibrated_heldout)
+    eligible = [choice["approved"] for choice in choices]
     output = Path(args.output)
     output.mkdir(parents=True, exist_ok=True)
     save_file({k: v.contiguous() for k, v in best_state.items()}, str(output / "semantic-teacher.safetensors"))
@@ -262,8 +352,15 @@ def fit_and_report(data, args):
         "temporalWeeks": 4, "predicts": "next-Monday CPC delta for each of 4 fuels",
         "forecasterParameters": params, "bestEpoch": chosen,
         "lastEpoch": len(curves), "elapsedSeconds": round(time.monotonic() - started, 2),
-        "validation": {"baseline": val_baseline, "teacher": val_teacher},
-        "lockedHoldout13Weeks": {"baseline": held_baseline, "teacher": held_teacher},
+        "split": {"trainCoreWeeks": stop_start, "earlyStopWeeks": val_start-stop_start,
+                  "selectionWeeks": test_start-val_start, "blindHoldoutWeeks": len(y)-test_start},
+        "modelSelection": choices,
+        "simpleRidge": {"chosenLambdaOnEarlyStop": ridge_lambda,
+                        "earlyStopMae": round(ridge_stop_mae, 5)},
+        "validation": {"baseline": val_baseline, "deepRaw": val_teacher,
+                       "ridge": val_ridge, "selectedCalibrated": val_selected},
+        "lockedHoldout13Weeks": {"baseline": held_baseline, "deepRaw": held_teacher,
+                                "ridge": held_ridge, "selectedCalibrated": held_selected},
         "validationApprovedByFuel": eligible,
         "automaticProductionPromotion": False,
         "timingWarning": "Historical news uses its first known availability; older RSS cannot be backdated.",
