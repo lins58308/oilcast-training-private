@@ -126,6 +126,18 @@ def train_predict(x, y, train_end, predict_start, predict_end, family, depth=4, 
     return np.clip(output.reshape(-1,4),-3,3)
 
 
+def predict_family(x,y,start,end,family):
+    if "-gated" not in family:
+        return train_predict(x,y,start,start,end,family)
+    base, threshold = family.split("-gated")
+    pred=train_predict(x,y,start,start,end,base)
+    # The streak is a bounded feature of PAST realized price changes;
+    # it is constructed before labels at the current origin are known.
+    # Index 30 = flat-streak for same fuel in feature matrix.
+    consecutive=x[start:end,:,30]
+    return np.where(consecutive>=int(threshold), 0, pred)
+
+
 def main():
     p=argparse.ArgumentParser()
     p.add_argument("--dataset",required=True)
@@ -144,12 +156,17 @@ def main():
         start=end-13
         if start<156: continue
         folds.append((start,end))
-    families=("price","market","all","hurdle")
+    # Domain-constrained no-change regimes: only use already known
+    # streaks, never any future CPC price nor the latest 13-week audit.
+    # If a long run of unchanged prices has occurred, suppress small
+    # ML changes rather than assume crude moves translate to retail.
+    families=("price","market","all","hurdle",
+              "price-gated4","price-gated8","market-gated4","market-gated8")
     history={}
     for family in families:
         vals=[]
         for start,end in folds:
-            pred=train_predict(x,y,start,start,end,family)
+            pred=predict_family(x,y,start,end,family)
             vals.append({"from":rows[start]["origin"],"to":rows[end-1]["targetDate"],
                          "scores":scoring(y[start:end],pred),
                          "byFuel":{FUEL_NAMES[f]:scoring(y[start:end,f],pred[:,f]) for f in range(4)}})
@@ -169,7 +186,7 @@ def main():
     # Holdout never participates in selection.
     holdout={}
     for f in families:
-        predicted=train_predict(x,y,audit,audit,n,f)
+        predicted=predict_family(x,y,audit,n,f)
         holdout[f]=scoring(y[audit:],predicted)
     holdout["flat"]=scoring(y[audit:],np.zeros_like(y[audit:]))
     report={"schema":1,"variant":args.variant,"status":"research-only",
