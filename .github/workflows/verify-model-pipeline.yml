@@ -3,11 +3,13 @@ name: OilCast v6-v7 quality checks (read-only, no publishing)
   push:
     branches:
       - 'fix/**'
+      - 'research/semantic-teacher-*'
   pull_request:
     paths:
       - 'core/**'
       - 'src/**'
       - 'tests/**'
+      - 'research/**'
       - 'run_training.py'
       - 'pipeline.py'
       - '.github/workflows/**'
@@ -33,11 +35,16 @@ jobs:
         run: python3 run_training.py --as-of 2026-09-13T13:00:00Z --output output
       - name: Check timeline, chronology and App model contract
         run: |
-          javac --release 11 -cp build/classes:build/json.jar -d build/classes tests/CloudContractTest.java tests/ModelTimelineTest.java tests/ModelTrainingCoverageTest.java tests/NewsHistoryTrainingTest.java tests/ModelDriverEvidenceTest.java
+          javac --release 11 -cp build/classes:build/json.jar -d build/classes tests/CloudContractTest.java tests/ModelTimelineTest.java tests/ModelTrainingCoverageTest.java tests/NewsHistoryTrainingTest.java tests/ModelDriverEvidenceTest.java tests/SemanticResearchDatasetTest.java tests/CpcHistoricalBackfillTest.java
           java -cp build/classes:build/json.jar ModelTimelineTest
           java -cp build/classes:build/json.jar ModelTrainingCoverageTest .
           java -cp build/classes:build/json.jar NewsHistoryTrainingTest
           java -cp build/classes:build/json.jar ModelDriverEvidenceTest .
+          java -cp build/classes:build/json.jar SemanticResearchDatasetTest .
+          java -cp build/classes:build/json.jar CpcHistoricalBackfillTest
+          java -cp build/classes:build/json.jar CpcHistoricalBackfillTest --live
+          javac --release 11 -cp build/classes:build/json.jar -d build/classes tests/LongHistoryModelTest.java
+          java -Xmx2g -cp build/classes:build/json.jar LongHistoryModelTest
           java -cp build/classes:build/json.jar CloudContractTest .
           if test -f tests/NeuralLearnerTest.java; then
             javac --release 11 -cp build/classes:build/json.jar -d build/classes tests/NeuralLearnerTest.java

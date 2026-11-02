@@ -13,6 +13,7 @@ import java.util.regex.*;
 /** Official effective-date observations, not predictions. Missing cells mean no update. */
 public final class OilData {
     public static final String SOURCE = "https://vipmbr.cpc.com.tw/mbwebs/showhistoryprice_oil.aspx";
+    public static final String HISTORICAL_SOURCE = "https://vipmbr.cpc.com.tw/mbwebs/showhistoryprice_oil2019.aspx";
     public static final ZoneId TAIPEI = ZoneId.of("Asia/Taipei");
     public static final String[] FUELS = {"92 無鉛", "95 無鉛", "98 無鉛", "超級柴油"};
     public static final int MAX_BYTES = 8 * 1024 * 1024;
@@ -163,6 +164,49 @@ public final class OilData {
             out.write(buf,0,n);
         }
         return new String(out.toByteArray(), StandardCharsets.UTF_8);
+    }
+
+
+    /**
+     * CPC authoritative 2019-and-earlier effective PRICE CHANGE events.
+     * Pre-2006 events are irregular, sometimes partial and occasionally
+     * timestamped in Chinese. Preserve original dates and missing cells.
+     * Never fabricate missing fuel prices or turn international crude into CPC.
+     */
+    public static List<Row> parseHistoricalHtml(String html) {
+        if(html.length()>MAX_BYTES)throw new IllegalArgumentException("Historical CPC page oversized");
+        if(!html.contains("調價日期")||!html.contains("無鉛汽油92")||!html.contains("無鉛汽油95")
+            ||!html.contains("超級/高級柴油"))throw new IllegalArgumentException("Missing official historical columns");
+        Matcher tr=Pattern.compile("<tr\\b[^>]*>(.*?)</tr>",Pattern.CASE_INSENSITIVE|Pattern.DOTALL).matcher(html);
+        Pattern td=Pattern.compile("<t[dh]\\b[^>]*>(.*?)</t[dh]>",Pattern.CASE_INSENSITIVE|Pattern.DOTALL);
+        Pattern date=Pattern.compile("^(19|20)[0-9]{2}/[0-9]{1,2}/[0-9]{1,2}(?:\\s.*)?$");
+        List<Row> result=new ArrayList<>();
+        while(tr.find()) {
+            Matcher cells=td.matcher(tr.group(1));List<String> values=new ArrayList<>();
+            while(cells.find())values.add(cells.group(1).replaceAll("<[^>]*>","")
+                 .replace("&nbsp;","").replace("&#160;","").replace("&amp;","&").trim());
+            if(values.size()<5||!date.matcher(values.get(0)).matches())continue;
+            String[] parts=values.get(0).split(" ")[0].split("/");
+            LocalDate d=LocalDate.of(Integer.parseInt(parts[0]),Integer.parseInt(parts[1]),Integer.parseInt(parts[2]));
+            if(d.isAfter(LocalDate.of(2019,12,31)))continue;
+            double[] prices=new double[4];boolean any=false;
+            for(int i=0;i<4;i++) {
+                String s=values.get(i+1).trim();
+                if(s.isEmpty()||s.equals("-")||s.equals("－")){prices[i]=Double.NaN;continue;}
+                if(!s.matches("[0-9]+(?:\\.[0-9]+)?"))
+                    throw new IllegalArgumentException("Unrecognized historical CPC fuel price");
+                prices[i]=Double.parseDouble(s);any=true;
+            }
+            if(any)result.add(new Row(d,prices));
+        }
+        List<Row> rows=merge(Collections.<Row>emptyList(),result);
+        if(rows.size()<200||rows.get(0).date.isAfter(LocalDate.of(2000,1,1))
+            ||rows.get(rows.size()-1).date.isBefore(LocalDate.of(2019,12,1)))
+            throw new IllegalArgumentException("Official history incomplete: 1999–2019 coverage not proven");
+        return rows;
+    }
+    public static List<Row> fetchHistorical() throws Exception {
+        return parseHistoricalHtml(PublicHttp.read(HISTORICAL_SOURCE));
     }
 
     public static List<Row> fetch() throws Exception {
