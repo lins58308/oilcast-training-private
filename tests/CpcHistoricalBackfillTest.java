@@ -7,7 +7,7 @@ public final class CpcHistoricalBackfillTest {
  public static void main(String[] args)throws Exception {
   StringBuilder html=new StringBuilder("<html><table id=\"MyGridView\"><tr><th>調價日期</th><th>無鉛汽油92</th><th>無鉛汽油95</th><th>無鉛汽油98</th><th>超級/高級柴油</th></tr>");
   LocalDate first=LocalDate.parse("1999-01-06");
-  for(int i=0;i<250;i++){
+  for(int i=0;i<280;i++){
    LocalDate day=first.plusDays(i*29L);
    if(day.isAfter(LocalDate.of(2019,12,31)))break;
    String date=day.getYear()+"/"+day.getMonthValue()+"/"+day.getDayOfMonth()+(i==1?" 下午 10:00:00":"");
