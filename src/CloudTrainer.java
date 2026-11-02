@@ -34,6 +34,8 @@ public final class CloudTrainer {
                 fetched.removeIf(row->row.date.isAfter(OilData.nextMonday(day)));
                 if(OilData.weeklyThrough(fetched,OilData.monday(day)).size()<80)throw new IllegalArgumentException("CPC history is incomplete");
                 List<OilData.Row> retained=new ArrayList<>();for(OilData.Row row:rows)if(row.date.isBefore(fetched.get(0).date))retained.add(row);
+                if (fetched.get(fetched.size()-1).date.isBefore(OilData.monday(day).minusWeeks(8)))
+                    throw new IllegalArgumentException("Official CPC events appear stale; keep previous signed model");
                 rows=OilData.merge(retained,fetched);cpcSynced=Instant.now();
                 System.out.println("CPC synchronized; updating public market and news sources");
                 progress.update("official",1,1,-1,-1);outside=ContextData.sync(outside,Instant.now(),progress);
