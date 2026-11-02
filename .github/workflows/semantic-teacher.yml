@@ -1,0 +1,99 @@
+name: OilCast pretrained semantic teacher experiments (no Android promotion)
+'on':
+  workflow_dispatch:
+    inputs:
+      variant:
+        description: Train v6 MLP or v7 Transformer teacher
+        required: true
+        type: choice
+        options: [v6, v7]
+      runner:
+        description: CPU or preconfigured oilcast-gpu GPU runner
+        required: true
+        type: choice
+        options: [cpu, gpu]
+  push:
+    branches: [research/semantic-teacher-v6-20261103, research/semantic-teacher-v7-20261103]
+permissions:
+  contents: read
+concurrency:
+  group: oilcast-semantic-teacher-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  research:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[train-semantic]')
+    runs-on: ${{ (github.event_name == 'workflow_dispatch' && inputs.runner == 'gpu') && 'oilcast-gpu' || 'ubuntu-24.04' }}
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.11'
+      - name: Compile and validate as-of training dataset
+        run: |
+          python3 -m py_compile research/train_semantic_teacher.py
+          python3 run_training.py --as-of 2026-09-13T13:00:00Z --output output/demo
+          javac --release 11 -cp build/classes:build/json.jar -d build/classes tests/SemanticResearchDatasetTest.java
+          java -cp build/classes:build/json.jar SemanticResearchDatasetTest .
+      - name: Restore full CPC and news archive
+        env:
+          RESEARCH_VARIANT: ${{ inputs.variant }}
+        run: |
+          set -euo pipefail
+          VARIANT="$RESEARCH_VARIANT"
+          if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
+            case "$GITHUB_REF_NAME" in
+              *v6*) VARIANT=v6 ;;
+              *v7*) VARIANT=v7 ;;
+              *) exit 1 ;;
+            esac
+          fi
+          echo "VARIANT=$VARIANT" >> "$GITHUB_ENV"
+          if [[ "$VARIANT" == "v7" ]]; then TAG=training-checkpoint-v7; else TAG=training-checkpoint; fi
+          curl --fail --location --retry 3 --silent --show-error \
+            "https://github.com/lins58308/oilcast-models/releases/download/$TAG/checkpoint.json" \
+            --output output/checkpoint.json
+          python3 - <<'PY'
+          import json
+          s=json.load(open('output/checkpoint.json'))
+          assert s['cloudStateSchema']==1 and len(s['rows'])>300
+          assert len(s['multisource']['news'])>2000
+          print('Archive:',len(s['rows']),'price rows,',len(s['multisource']['news']),'headlines')
+          PY
+      - name: Export all as-of weekly labels and available headlines
+        run: |
+          java -cp build/classes:build/json.jar tw.oilcast.core.SemanticResearchDataset \
+            . output/checkpoint.json output/research-dataset.json "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+      - name: Install CPU/GPU deep learning libraries
+        run: |
+          python3 -m pip install --no-cache-dir \
+            'numpy>=1.26,<3' 'torch>=2.3,<3' 'transformers>=4.45,<5' \
+            'safetensors>=0.4,<1' 'sentencepiece>=0.2,<1'
+      - name: Train frozen 0.3B E5 encoder with v6 or v7 temporal teacher
+        env:
+          HF_HUB_DISABLE_TELEMETRY: '1'
+          TOKENIZERS_PARALLELISM: 'false'
+          OMP_NUM_THREADS: '2'
+        run: |
+          python3 research/train_semantic_teacher.py \
+            --dataset output/research-dataset.json \
+            --variant "$VARIANT" \
+            --output "output/teacher-$VARIANT" \
+            --device auto --epochs 80 --patience 12 --batch-size 16
+      - name: Retain accuracy comparison and model weights; never Android-promote
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: semantic-teacher-${{ github.run_id }}
+          path: |
+            output/teacher-*/report.json
+            output/teacher-*/training-curves.json
+            output/teacher-*/semantic-teacher.safetensors
+          if-no-files-found: warn
+          retention-days: 30

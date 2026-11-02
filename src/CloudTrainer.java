@@ -30,6 +30,17 @@ public final class CloudTrainer {
         Instant cpcSynced=asOf;
         if(live){
             PublicHttp.begin();try{
+                // Backfill only when historic CPC prices are missing in the retained checkpoint.
+                // A failed official 1999-2019 download FAILS CLOSED instead of signing a
+                // misleading 6-year "full-history" model.
+                if(rows.isEmpty() || rows.get(0).date.isAfter(LocalDate.of(2000,1,1))){
+                    List<OilData.Row> oldOfficial=OilData.fetchHistorical();
+                    rows=OilData.merge(oldOfficial,rows);
+                    List<OilData.Row> check=OilData.weeklyThrough(rows,LocalDate.of(2020,1,6));
+                    if(check.size()<1000)throw new IllegalStateException("1999-2019 CPC weekly coverage failed");
+                    System.out.println("Official CPC archive backfilled: "+oldOfficial.size()
+                        +" effective-price records; "+check.size()+" 20-year weekly observations");
+                }
                 List<OilData.Row> fetched=OilData.fetch();LocalDate day=OilData.today();
                 fetched.removeIf(row->row.date.isAfter(OilData.nextMonday(day)));
                 if(OilData.weeklyThrough(fetched,OilData.monday(day)).size()<80)throw new IllegalArgumentException("CPC history is incomplete");
@@ -44,6 +55,8 @@ public final class CloudTrainer {
         }
         LocalDate day=asOf.atZone(OilData.TAIPEI).toLocalDate();List<OilData.Row> weekly=OilData.weeklyThrough(rows,OilData.monday(day));
         if(weekly.size()<80||!weekly.get(weekly.size()-1).date.equals(OilData.monday(day)))throw new IllegalArgumentException("Official data does not cover the current week; no model published");
+        if(live && (weekly.size()<1300 || !weekly.get(0).date.isBefore(LocalDate.of(2000,1,1))))
+            throw new IllegalStateException("Live publish blocked: 25+ years of authenticated CPC prices are required");
         ContextData context=new ContextData(outside);int revision=old==null?1:old.getJSONObject("model").getInt("revision")+1;
         String hash=ContextData.sha(OilData.fingerprint(weekly)+context.fingerprint()+day);
         long started=System.nanoTime();JSONObject model=MultiLearner.train(weekly,context,revision,hash,asOf,progress);long millis=(System.nanoTime()-started)/1_000_000;
@@ -60,7 +73,7 @@ public final class CloudTrainer {
         JSONObject checkpoint=new JSONObject().put("cloudStateSchema",1).put("rows",OilData.json(rows)).put("multisource",outside).put("model",model).put("cloudAccuracy",cloudAccuracy);
         Files.writeString(out.resolve("checkpoint.json"),checkpoint.toString());
         Files.writeString(out.resolve("training-status.json"),new JSONObject().put("outcome","running").put("phase","publish").put("percent",95).put("updatedAt",Instant.now().toString()).toString());
-        JSONObject result=new JSONObject().put("algorithm",MultiLearner.VERSION).put("revision",revision).put("demo",!live).put("published",false).put("appConnected",false).put("cloudExecutionVerified",false).put("cpuTrainMillis",millis).put("modelBytes",bytes.length).put("weeklyRows",weekly.size()).put("newsRows",context.newsSize()).put("publicNewsRows",publicContext.getJSONArray("news").length()).put("marketRows",context.marketSize()).put("targetDate",model.getString("targetDate"));
+        JSONObject result=new JSONObject().put("algorithm",MultiLearner.VERSION).put("revision",revision).put("demo",!live).put("published",false).put("appConnected",false).put("cloudExecutionVerified",false).put("cpuTrainMillis",millis).put("modelBytes",bytes.length).put("weeklyRows",weekly.size()).put("priceHistoryFrom",weekly.get(0).date.toString()).put("priceHistoryThrough",weekly.get(weekly.size()-1).date.toString()).put("newsRows",context.newsSize()).put("publicNewsRows",publicContext.getJSONArray("news").length()).put("marketRows",context.marketSize()).put("targetDate",model.getString("targetDate"));
         Files.writeString(out.resolve("result.json"),result.toString(2));System.out.println(result.toString(2));
     }
 }
