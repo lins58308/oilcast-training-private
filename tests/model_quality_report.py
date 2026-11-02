@@ -25,6 +25,14 @@ def report(path):
             assert fuel["fit"]["samples"] == full_history_samples, (
                 "active fitted model did not use the whole history"
             )
+        drivers = fuel.get("historicalDrivers")
+        assert drivers is not None, "missing news and crude associations for this fuel"
+        assert drivers["supervisedTarget"] == "next-week-cpc-effective-price-delta"
+        assert len(drivers["associations"]) == 9
+        for signal in drivers["associations"]:
+            assert signal["observedWeeks"] >= signal["signalWeeks"]
+            assert signal["changedWeeks"] <= signal["observedWeeks"]
+            assert signal["causality"].startswith("歷史統計關聯")
         points = fuel["backtest"]
         assert len(points) == fuel["testCount"] == 13, "unexpected locked audit size"
         errors = [abs(p["predicted"] - p["actual"]) for p in points]
