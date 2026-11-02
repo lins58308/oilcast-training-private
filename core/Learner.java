@@ -5,7 +5,7 @@ import org.json.*;
 
 /** Small on-device ridge autoregression. All walk-forward fits see past observations only. */
 public final class Learner {
-    public static final int FEATURES = 10, MIN_WEEKS = 80, TEST = 13, VALIDATION = 26, WINDOW = 156;
+    public static final int FEATURES = 10, MIN_WEEKS = 80, TEST = 13, VALIDATION = 26;
     public static final double BASELINE = -1, MOMENTUM = -2;
     private static final double[] CANDIDATES = {BASELINE, MOMENTUM, 0.1, 1, 10, 100};
     public static final String VERSION = "ridge-weekly-v1";
@@ -50,7 +50,8 @@ public final class Learner {
     public static Fit fit(List<OilData.Row> rows,int origin,int f,double kind) {
         check();Fit model=new Fit();model.kind=kind;Arrays.fill(model.scale,1);
         if(kind<0)return model;
-        int start=Math.max(12,origin-WINDOW), n=origin-start;
+        // Expanding history: every labeled week with a 12-week feature warm-up is used.
+        int start=12, n=origin-start;
         if(n<20)throw new IllegalArgumentException("訓練樣本不足");
         double[][] x=new double[n][];double[] y=new double[n];
         for(int i=0;i<n;i++) {
@@ -86,7 +87,9 @@ public final class Learner {
     }
 
     public static final class Score {
-        public double mae, direction; public double[] errors;
+        public double mae, direction, movementRecall, falseMoveRate;
+        public int movingCount, movementHits;
+        public double[] errors;
         public JSONArray points=new JSONArray();
     }
     public static Score evaluate(List<OilData.Row> rows,int fuel,double kind,int from,int to)throws JSONException{
@@ -127,7 +130,7 @@ public final class Learner {
                 .put("kind",active).put("name",name(active)).put("candidateKind",best).put("candidateName",name(best))
                 .put("mae",score.mae).put("baselineMae",baseline.mae).put("candidateMae",candidate.mae)
                 .put("direction",score.direction).put("testCount",TEST).put("validationCount",VALIDATION)
-                .put("trainingSamples",Math.min(WINDOW,n-13)).put("predicted",predicted)
+                .put("trainingSamples",n-13).put("predicted",predicted)
                 .put("lower",Math.max(5,round(predicted-radius))).put("upper",Math.min(100,round(predicted+radius)))
                 .put("radius",radius).put("validationScores",scores).put("backtest",score.points)
                 .put("decision",active==BASELINE?"候選模型未明顯勝過價格不變基準，本輪採用基準。":"候選模型通過最近 13 週驗收，已重新訓練並啟用。"));

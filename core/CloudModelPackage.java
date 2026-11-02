@@ -36,7 +36,7 @@ public final class CloudModelPackage {
         require(!manifest.getBoolean("demo")||allowDemo,"Demo models cannot be activated in production");
         JSONObject data=new JSONObject(new String(payload,StandardCharsets.UTF_8)),model=data.getJSONObject("model");
         require(data.getInt("schema")==1&&data.getString("source").equals(OilData.SOURCE),"Unsupported model package");
-        require(model.getInt("schema")==2&&model.getString("algorithm").equals(MultiLearner.VERSION)&&manifest.getString("algorithm").equals(MultiLearner.VERSION),"App algorithm upgrade is required");
+        require(model.getInt("schema")==2&&MultiLearner.supports(model.getString("algorithm"))&&manifest.getString("algorithm").equals(model.getString("algorithm")),"App algorithm upgrade is required");
         require(model.getInt("revision")>0&&model.getInt("revision")==manifest.getInt("revision"),"Invalid model revision");
         Instant trained=Instant.parse(model.getString("trainedAt")),synced=Instant.parse(data.getString("cpcSyncedAt"));
         for(Instant instant:new Instant[]{trained,synced}){long age=Duration.between(instant,now).getSeconds();require(age>=-300&&age<=36*3600,"Model or official data is stale");}
@@ -44,7 +44,7 @@ public final class CloudModelPackage {
         LocalDate today=now.atZone(OilData.TAIPEI).toLocalDate(),through=LocalDate.parse(model.getString("trainedThrough")),target=LocalDate.parse(model.getString("targetDate"));
         require(through.toString().equals(manifest.getString("dataThrough"))&&target.toString().equals(manifest.getString("targetDate")),"Model dates differ");
         require(target.isAfter(today)&&target.equals(through.plusWeeks(1))&&!through.isBefore(OilData.monday(today))&&!through.isAfter(OilData.nextMonday(today)),"Model forecast week is stale or invalid");
-        List<OilData.Row> weekly=OilData.weekly(OilData.fromJson(data.getJSONArray("rows")),OilData.nextMonday(today));
+        List<OilData.Row> weekly=OilData.weeklyThrough(OilData.fromJson(data.getJSONArray("rows")),OilData.monday(today));
         require(weekly.size()>=80&&weekly.get(weekly.size()-1).date.equals(through),"Official rows do not match model");
         JSONArray fuels=model.getJSONArray("fuels");require(fuels.length()==4,"Four fuel models are required");
         for(int f=0;f<4;f++){

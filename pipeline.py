@@ -60,8 +60,9 @@ class GitHub:
         readback=self.request(result['url'],raw=True)
         if hashlib.sha256(readback).digest()!=hashlib.sha256(data).digest():raise RuntimeError('Uploaded asset checksum differs')
         return result
-    def status(self,value):
-        path='/contents/status.json';sha=None
+    def status(self,value,name='status.json'):
+        if name not in {'status.json','status-v7.json'}:raise RuntimeError('Invalid status channel')
+        path='/contents/'+name;sha=None
         try:sha=self.request(path)['sha']
         except ApiError as error:
             if error.status!=404:raise
@@ -69,38 +70,62 @@ class GitHub:
         if sha:request['sha']=sha
         self.request(path,method='PUT',value=request)
 
-def restore_checkpoint(api,latest,output):
-    checkpoint=api.release('training-checkpoint')
-    if checkpoint:
-        data=api.asset(checkpoint,'checkpoint.json');state=json.loads(data)
-        if state.get('cloudStateSchema')!=1 or any(k in state for k in ['ledger','authorization','bills']):raise RuntimeError('Invalid public training checkpoint')
-        output.write_bytes(data)
-    elif latest:
-        # Never silently reset the revision/history after a checkpoint upload failure.
-        data=api.asset(latest,'model.json');payload=json.loads(data)
-        if 'multisource' not in payload or any(k in payload for k in ['ledger','authorization','issued']):raise RuntimeError('Latest public model cannot restore training data')
-        output.write_text(json.dumps({'cloudStateSchema':1,'rows':payload['rows'],'multisource':payload['multisource'],'model':payload['model'],'cloudAccuracy':payload.get('cloudAccuracy')}))
-    else:return
-    # A model may have been published immediately before a checkpoint update failed.
-    if latest:
-        payload=json.loads(api.asset(latest,'model.json'));old=json.loads(output.read_text())
-        if payload['model']['trainedAt']>old['model']['trainedAt']:
-            output.write_text(json.dumps({'cloudStateSchema':1,'rows':payload['rows'],'multisource':payload['multisource'],'model':payload['model'],'cloudAccuracy':payload.get('cloudAccuracy')}))
+def restore_checkpoint(api,latest,output,checkpoint_tag='training-checkpoint'):
+    # Checkpoint is the complete public training-news archive; the signed Android
+    # model intentionally contains only a small live inference projection.
+    checkpoint=api.release(checkpoint_tag)
+    def validate_state(data):
+        state=json.loads(data)
+        if state.get('cloudStateSchema')!=1 or any(k in state for k in ('ledger','authorization','bills')):
+            raise RuntimeError('Invalid public training checkpoint')
+        if not isinstance(state.get('multisource',{}).get('news'),list):
+            raise RuntimeError('Missing full historical news in training state')
+        return state
+    def from_release(release):
+        if any(asset.get('name')=='training-state.json' for asset in release.get('assets',[])):
+            data=api.asset(release,'training-state.json')
+            return data,validate_state(data)
+        # Historical releases before full-archive support stored every story
+        # in model.json. A newer projected model can NEVER repair an archive.
+        data=api.asset(release,'model.json');payload=json.loads(data)
+        if payload.get('trainingNewsArchiveComplete') is False:
+            raise RuntimeError('Full training archive asset missing; refusing news-history loss')
+        if 'multisource' not in payload or any(k in payload for k in ('ledger','authorization','issued')):
+            raise RuntimeError('Latest public model cannot restore training data')
+        state={'cloudStateSchema':1,'rows':payload['rows'],'multisource':payload['multisource'],
+               'model':payload['model'],'cloudAccuracy':payload.get('cloudAccuracy')}
+        return json.dumps(state).encode(),validate_state(json.dumps(state).encode())
 
-def publish(api,tag,folder):
+    current=None
+    if checkpoint:
+        raw=api.asset(checkpoint,'checkpoint.json');current=validate_state(raw);output.write_bytes(raw)
+    if latest:
+        latest_model=json.loads(api.asset(latest,'model.json'))
+        if current is None or latest_model['model']['trainedAt']>current['model']['trainedAt']:
+            recovery,recovered=from_release(latest)
+            if recovered['model']['trainedAt']!=latest_model['model']['trainedAt']:
+                raise RuntimeError('Release recovery state and model revision differ')
+            output.write_bytes(recovery)
+    # No release/checkpoint means a first-ever training run from the bundled seed.
+
+def publish(api,tag,folder,test_channel=False):
     envelope=json.loads((folder/'envelope.json').read_text());manifest=json.loads(base64.b64decode(envelope['manifestBase64']))
     if manifest.get('demo') or 'payloadUrl' not in manifest:raise RuntimeError('Demo/unsigned output cannot be published')
     model=(folder/'model.json').read_bytes()
     if hashlib.sha256(model).hexdigest()!=manifest['payloadSha256'] or len(model)!=manifest['payloadBytes']:raise RuntimeError('Model package checksum mismatch')
     if not manifest['payloadUrl'].startswith('https://github.com/'+api.repository+'/releases/download/'+tag+'/'):raise RuntimeError('Immutable model URL points to another repository/release')
     if api.release(tag):raise RuntimeError('Immutable model release already exists; inspect it before retrying')
-    draft=api.request('/releases',method='POST',value={'tag_name':tag,'name':'Oilcast model '+manifest['trainedAt'],'body':'Public oil-price model. Forecasts are estimates; official CPC announcements take precedence.','draft':True,'prerelease':False,'make_latest':'false'})
+    draft=api.request('/releases',method='POST',value={'tag_name':tag,'name':('Oilcast neural v7 TEST ' if test_channel else 'Oilcast model ')+manifest['trainedAt'],'body':'Public oil-price model. Forecasts are estimates; official CPC announcements take precedence.','draft':True,'prerelease':test_channel,'make_latest':'false'})
     api.upload(draft,'model.json',model)
     api.upload(draft,'envelope.json',(folder/'envelope.json').read_bytes())
-    # Both immutable assets have been read back before becoming the public latest model.
-    release=api.request('/releases/'+str(draft['id']),method='PATCH',value={'draft':False,'make_latest':'true'})
-    checkpoint=api.release('training-checkpoint')
-    if not checkpoint:checkpoint=api.request('/releases',method='POST',value={'tag_name':'training-checkpoint','name':'Public training checkpoint','draft':False,'prerelease':True,'make_latest':'false'})
+    # Recover ALL historical news if the mutable checkpoint publication fails.
+    # The immutable release must contain both Android inference and full training state.
+    api.upload(draft,'training-state.json',(folder/'checkpoint.json').read_bytes())
+    # All immutable assets have been read back before becoming the public latest model.
+    release=api.request('/releases/'+str(draft['id']),method='PATCH',value={'draft':False,'make_latest':'false' if test_channel else 'true'})
+    checkpoint_tag='training-checkpoint-v7' if test_channel else 'training-checkpoint'
+    checkpoint=api.release(checkpoint_tag)
+    if not checkpoint:checkpoint=api.request('/releases',method='POST',value={'tag_name':checkpoint_tag,'name':'Public training checkpoint'+(' (v7 test)' if test_channel else ''),'draft':False,'prerelease':True,'make_latest':'false'})
     api.upload(checkpoint,'checkpoint.json',(folder/'checkpoint.json').read_bytes(),replace=True)
     return release
 
@@ -108,19 +133,42 @@ def main():
     repo=os.environ.get('GITHUB_REPOSITORY','');run_id=os.environ.get('GITHUB_RUN_ID','');attempt=os.environ.get('GITHUB_RUN_ATTEMPT','1')
     public_repo=os.environ.get('MODEL_PUBLIC_REPOSITORY','')
     publish_token=os.environ.get('MODEL_PUBLISH_TOKEN','')
+    test_channel=os.environ.get('MODEL_TEST_CHANNEL','false').lower()=='true'
+    if test_channel:
+        direct_branch=(os.environ.get('GITHUB_REF_NAME')=='feature/neural-v7-backtesting' and os.environ.get('GITHUB_EVENT_NAME') in {'push','workflow_dispatch'})
+        trusted_schedule=(os.environ.get('GITHUB_REF_NAME')=='main' and os.environ.get('GITHUB_WORKFLOW')=='Maintain OilCast NN v7 public test feed' and os.environ.get('GITHUB_EVENT_NAME') in {'schedule','workflow_dispatch'})
+        if not (direct_branch or trusted_schedule):raise RuntimeError('v7 test publisher can only run on its isolated branch or trusted maintenance workflow')
     if not re.fullmatch(r'[0-9]+',run_id) or not re.fullmatch(r'[0-9]+',attempt):raise RuntimeError('This publisher runs only inside a configured GitHub workflow')
     if not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+',public_repo):raise RuntimeError('MODEL_PUBLIC_REPOSITORY is missing or invalid')
     if public_repo==repo:raise RuntimeError('Training and public-download repositories must be separate')
     if not publish_token:raise RuntimeError('MODEL_PUBLISH_TOKEN is not configured')
     if not os.environ.get('MODEL_SIGNING_KEY_B64'):raise RuntimeError('MODEL_SIGNING_KEY_B64 is not configured')
     api=GitHub(public_repo,publish_token);tag='model-'+run_id+'-'+attempt;out=ROOT/'output';out.mkdir(exist_ok=True)
+    status_name='status-v7.json' if test_channel else 'status.json'
+    checkpoint_tag='training-checkpoint-v7' if test_channel else 'training-checkpoint'
+    # The existing release/latest remains the v6 channel; v7 has an independently
+    # versioned status pointer and never sets GitHub's latest release.
+    previous_status={}
+    if test_channel:
+        try:
+            entry=api.request('/contents/status-v7.json')
+            previous_status=json.loads(base64.b64decode(entry['content']))
+        except ApiError as error:
+            if error.status!=404:raise
+        model_tag=previous_status.get('modelTag','')
+        if model_tag and not re.fullmatch(r'model-[0-9]+-[0-9]+',model_tag):raise RuntimeError('Invalid existing v7 model pointer')
+    else:model_tag=''
     # A public status file must not expose the private Actions run URL.
     run_url='https://github.com/'+public_repo+'/releases/latest'
     def report(phase,percent,outcome='running'):
-        api.status({'schema':1,'outcome':outcome,'phase':phase,'percent':percent,'updatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'runUrl':run_url})
+        status={'schema':1,'outcome':outcome,'phase':phase,'percent':percent,'updatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'runUrl':run_url}
+        if test_channel:status.update({'channel':'neural-v7','modelTag':model_tag})
+        api.status(status,status_name)
     process=None
     try:
-        report('prepare',0);restore_checkpoint(api,api.latest(),ROOT/'checkpoint.json')
+        report('prepare',0)
+        latest=api.release(model_tag) if test_channel and model_tag else api.latest()
+        restore_checkpoint(api,latest,ROOT/'checkpoint.json',checkpoint_tag)
         url='https://github.com/'+public_repo+'/releases/download/'+tag+'/model.json'
         process=subprocess.Popen(['python3',str(ROOT/'run_training.py'),'--live','--checkpoint',str(ROOT/'checkpoint.json'),'--output',str(out),'--model-url',url],cwd=ROOT)
         last_phase=None;last_report=0
@@ -134,8 +182,9 @@ def main():
         if process.returncode!=0:raise RuntimeError('Training failed; previous public model stays available')
         cp=str(ROOT/'build/classes')+os.pathsep+str(ROOT/'build/json.jar')
         subprocess.run(['java','-cp',cp,'VerifyOutput',str(ROOT),str(out)],check=True)
-        report('publish',96);publish(api,tag,out)
-        subprocess.run(['java','-cp',cp,'VerifyPublicDownload',str(ROOT),public_repo,str(out)],check=True)
+        report('publish',96);publish(api,tag,out,test_channel)
+        subprocess.run(['java','-cp',cp,'VerifyPublicDownload',str(ROOT),public_repo,str(out),tag if test_channel else 'latest'],check=True)
+        if test_channel:model_tag=tag
         report('complete',100,'complete')
         print('Signed cloud model published:',tag)
     except Exception:

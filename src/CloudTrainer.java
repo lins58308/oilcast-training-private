@@ -32,23 +32,26 @@ public final class CloudTrainer {
             PublicHttp.begin();try{
                 List<OilData.Row> fetched=OilData.fetch();LocalDate day=OilData.today();
                 fetched.removeIf(row->row.date.isAfter(OilData.nextMonday(day)));
-                if(OilData.weekly(fetched,OilData.nextMonday(day)).size()<80)throw new IllegalArgumentException("CPC history is incomplete");
+                if(OilData.weeklyThrough(fetched,OilData.monday(day)).size()<80)throw new IllegalArgumentException("CPC history is incomplete");
                 List<OilData.Row> retained=new ArrayList<>();for(OilData.Row row:rows)if(row.date.isBefore(fetched.get(0).date))retained.add(row);
+                if (fetched.get(fetched.size()-1).date.isBefore(OilData.monday(day).minusWeeks(8)))
+                    throw new IllegalArgumentException("Official CPC events appear stale; keep previous signed model");
                 rows=OilData.merge(retained,fetched);cpcSynced=Instant.now();
                 System.out.println("CPC synchronized; updating public market and news sources");
                 progress.update("official",1,1,-1,-1);outside=ContextData.sync(outside,Instant.now(),progress);
             }finally{PublicHttp.end();}
             asOf=Instant.now();
         }
-        LocalDate day=asOf.atZone(OilData.TAIPEI).toLocalDate();List<OilData.Row> weekly=OilData.weekly(rows,OilData.nextMonday(day));
-        if(weekly.size()<80||weekly.get(weekly.size()-1).date.isBefore(OilData.monday(day)))throw new IllegalArgumentException("Official data does not cover the current week; no model published");
+        LocalDate day=asOf.atZone(OilData.TAIPEI).toLocalDate();List<OilData.Row> weekly=OilData.weeklyThrough(rows,OilData.monday(day));
+        if(weekly.size()<80||!weekly.get(weekly.size()-1).date.equals(OilData.monday(day)))throw new IllegalArgumentException("Official data does not cover the current week; no model published");
         ContextData context=new ContextData(outside);int revision=old==null?1:old.getJSONObject("model").getInt("revision")+1;
         String hash=ContextData.sha(OilData.fingerprint(weekly)+context.fingerprint()+day);
         long started=System.nanoTime();JSONObject model=MultiLearner.train(weekly,context,revision,hash,asOf,progress);long millis=(System.nanoTime()-started)/1_000_000;
         JSONObject priorAccuracy=old==null?null:old.optJSONObject("cloudAccuracy");
         if(priorAccuracy==null&&old!=null)priorAccuracy=CloudAccuracy.update(null,old.getJSONObject("model"),rows,asOf);
         JSONObject cloudAccuracy=CloudAccuracy.update(priorAccuracy,model,rows,asOf);
-        JSONObject payload=new JSONObject().put("schema",1).put("source",OilData.SOURCE).put("cpcSyncedAt",cpcSynced.toString()).put("rows",OilData.json(rows)).put("model",model).put("multisource",outside).put("sourceStates",ContextData.catalog(outside.optJSONObject("sources"))).put("cloudAccuracy",cloudAccuracy);
+        JSONObject publicContext=ContextData.publicationView(outside,asOf);
+        JSONObject payload=new JSONObject().put("schema",1).put("trainingNewsArchiveComplete",false).put("source",OilData.SOURCE).put("cpcSyncedAt",cpcSynced.toString()).put("rows",OilData.json(rows)).put("model",model).put("multisource",publicContext).put("sourceStates",ContextData.catalog(outside.optJSONObject("sources"))).put("cloudAccuracy",cloudAccuracy);
         byte[] bytes=payload.toString().getBytes(StandardCharsets.UTF_8);if(bytes.length>CloudModelPackage.MAX_BYTES)throw new IllegalArgumentException("Model package exceeds limit");
         JSONObject manifest=new JSONObject().put("schema",1).put("demo",!live).put("algorithm",MultiLearner.VERSION).put("revision",revision).put("trainedAt",asOf.toString()).put("dataThrough",model.getString("trainedThrough")).put("targetDate",model.getString("targetDate")).put("payloadSha256",CloudModelPackage.sha(bytes)).put("payloadBytes",bytes.length).put("payloadFile","model.json");
         if(args.length>6&&!args[6].isEmpty())manifest.put("payloadUrl",args[6]);
@@ -57,7 +60,7 @@ public final class CloudTrainer {
         JSONObject checkpoint=new JSONObject().put("cloudStateSchema",1).put("rows",OilData.json(rows)).put("multisource",outside).put("model",model).put("cloudAccuracy",cloudAccuracy);
         Files.writeString(out.resolve("checkpoint.json"),checkpoint.toString());
         Files.writeString(out.resolve("training-status.json"),new JSONObject().put("outcome","running").put("phase","publish").put("percent",95).put("updatedAt",Instant.now().toString()).toString());
-        JSONObject result=new JSONObject().put("algorithm",MultiLearner.VERSION).put("revision",revision).put("demo",!live).put("published",false).put("appConnected",false).put("cloudExecutionVerified",false).put("cpuTrainMillis",millis).put("modelBytes",bytes.length).put("weeklyRows",weekly.size()).put("newsRows",context.newsSize()).put("marketRows",context.marketSize()).put("targetDate",model.getString("targetDate"));
+        JSONObject result=new JSONObject().put("algorithm",MultiLearner.VERSION).put("revision",revision).put("demo",!live).put("published",false).put("appConnected",false).put("cloudExecutionVerified",false).put("cpuTrainMillis",millis).put("modelBytes",bytes.length).put("weeklyRows",weekly.size()).put("newsRows",context.newsSize()).put("publicNewsRows",publicContext.getJSONArray("news").length()).put("marketRows",context.marketSize()).put("targetDate",model.getString("targetDate"));
         Files.writeString(out.resolve("result.json"),result.toString(2));System.out.println(result.toString(2));
     }
 }
