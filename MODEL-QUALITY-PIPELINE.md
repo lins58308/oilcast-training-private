@@ -16,6 +16,31 @@ means the pipeline is internally consistent, **not** that future forecasts are a
 3. **Construct only available-at-time features:** historical training snapshots
    are bounded by their historical origin; live market/news snapshot uses the
    current training time. Missing source availability must be explicit.
+## Expanding training history: every observed week
+
+- **No fixed 156-week training cutoff.** Every week that has sufficient
+  historical lag features is included in the training dataset for every
+  chronological fitting origin. The first 12 weeks are used for 12-week
+  feature warm-up, not dropped for being old; the last observed week is a
+  training *target* for the previous origin and a live feature origin.
+- The most recent complete weekly observation can participate in **final
+  retraining** after model selection. Validation and holdout *predictions*
+  do not look into those later outcomes when evaluating their own origins.
+- **Unchanged weeks are real labels** with a price movement of zero; they
+  are retained even if CPC did not publish a new price-change event.
+- For the recent-weighted robust regression and v7 neural preprocessing /
+  Adam optimization, each older sample gets a recency weight of **at least
+  0.5** of the newest unchanged week's base weight. Price-change emphasis
+  is applied on top of that floor for neural training, never in place of
+  inclusion.
+- The JSON `trainingSamples` records **all history after feature warm-up**,
+  rather than a cap of 156. `ModelTrainingCoverageTest` changes an early
+  (pre-156-week) CPC row and proves that the final fitted parameters change.
+  `model_quality_report.py` rejects unexpected shrinkage back to 156
+  examples.
+- More training data is not automatically better prediction: maintain
+  rolling-origin and actual-outcome accuracy checks and reject regressions.
+
 4. **Fit competing candidates on past observations:** v6 uses an unchanged-price baseline plus historical-price and
    multi-source ridge/regression alternatives; v7 additionally fits
    a compact deterministic neural net. All four fuels are evaluated separately.
