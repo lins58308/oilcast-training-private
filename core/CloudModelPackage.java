@@ -44,7 +44,7 @@ public final class CloudModelPackage {
         LocalDate today=now.atZone(OilData.TAIPEI).toLocalDate(),through=LocalDate.parse(model.getString("trainedThrough")),target=LocalDate.parse(model.getString("targetDate"));
         require(through.toString().equals(manifest.getString("dataThrough"))&&target.toString().equals(manifest.getString("targetDate")),"Model dates differ");
         require(target.isAfter(today)&&target.equals(through.plusWeeks(1))&&!through.isBefore(OilData.monday(today))&&!through.isAfter(OilData.nextMonday(today)),"Model forecast week is stale or invalid");
-        List<OilData.Row> weekly=OilData.weekly(OilData.fromJson(data.getJSONArray("rows")),OilData.nextMonday(today));
+        List<OilData.Row> weekly=OilData.weeklyThrough(OilData.fromJson(data.getJSONArray("rows")),OilData.monday(today));
         require(weekly.size()>=80&&weekly.get(weekly.size()-1).date.equals(through),"Official rows do not match model");
         JSONArray fuels=model.getJSONArray("fuels");require(fuels.length()==4,"Four fuel models are required");
         for(int f=0;f<4;f++){
