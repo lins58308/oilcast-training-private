@@ -82,7 +82,7 @@ public final class CloudContractTest {
         data=new JSONObject(base.toString());data.getJSONObject("model").getJSONArray("fuels").getJSONObject(1).put("lower",99);final JSONObject band=data;rejects(()->validate(band,null,now,true),"invalid price band rejected");
         // Training parity: the Android core has not been reimplemented in a new ML framework.
         JSONObject outside=new JSONObject(Files.readString(root.resolve("data/multisource.json")));ContextData context=new ContextData(outside);
-        List<OilData.Row> weekly=OilData.weekly(OilData.fromJson(base.getJSONArray("rows")),OilData.nextMonday(now.atZone(OilData.TAIPEI).toLocalDate()));
+        List<OilData.Row> weekly=OilData.weeklyThrough(OilData.fromJson(base.getJSONArray("rows")),OilData.monday(now.atZone(OilData.TAIPEI).toLocalDate()));
         JSONObject repeated=MultiLearner.train(weekly,context,1,"parity-fixture",now);
         for(int f=0;f<4;f++){
             JSONObject local=repeated.getJSONArray("fuels").getJSONObject(f),cloud=base.getJSONObject("model").getJSONArray("fuels").getJSONObject(f);
