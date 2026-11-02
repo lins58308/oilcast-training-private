@@ -13,7 +13,7 @@ name: OilCast pretrained semantic teacher experiments (no Android promotion)
         type: choice
         options: [cpu, gpu]
   push:
-    branches: [research/semantic-teacher-v6-20261103, research/semantic-teacher-v7-20261103]
+    branches: [research/semantic-teacher-v6-20261103, research/semantic-teacher-v7-20261103, experiment/cpc-accuracy-v6-20261103, experiment/cpc-accuracy-v7-20261103]
 permissions:
   contents: read
 concurrency:
@@ -85,7 +85,8 @@ jobs:
             --dataset output/research-dataset.json \
             --variant "$VARIANT" \
             --output "output/teacher-$VARIANT" \
-            --device auto --epochs 80 --patience 12 --batch-size 16
+            --device auto --epochs 80 --patience 12 --batch-size 16 \
+            --encoder-revision d128750597153bb5987e10b1c3493a34e5a4502a
       - name: Retain accuracy comparison and model weights; never Android-promote
         if: always()
         uses: actions/upload-artifact@v4
