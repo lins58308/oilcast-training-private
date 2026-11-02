@@ -67,6 +67,38 @@ means the pipeline is internally consistent, **not** that future forecasts are a
    initial outcome and subsequent official corrections without double-counting.
    Signed live accuracy is tracked separately from historical validation.
 
+## Full collected-news training, without look-ahead
+
+- All unique, **safely dated** headlines and source metadata returned by the
+  configured ten public news feeds and EIA archives are retained in the cloud
+  training history. Oil-price keyword screening no longer discards other
+  financial or geopolitical headlines. Unrelated stories count toward news
+  activity, but never falsely assert an oil supply/demand shock.
+- Historical feed metadata is not silently truncated after 90 days or after
+  5,000 news items. A hard safety capacity of **20,000** retained reports
+  currently prevents resource exhaustion; exceeding it fails the run rather
+  than deleting the oldest reports. This is **not an unlimited internet news
+  crawler** and does not download copyrighted article bodies.
+- Every training origin computes its news features from the **preceding
+  28 days of news already available at that point in time**, rather than
+  looking at only 7 days or using upcoming headlines. A story discovered
+  today but published years ago cannot be backdated into historical training
+  as if the model saw it years ago.
+- Recent-news feature weight is bounded below by **25%** over the 28-day
+  context window. Equalized publisher statistics, six oil-economy event
+  categories, and total news volume are still used by both v6 and v7.
+- Each signed Android prediction payload contains only stories needed for
+  its current inference window (at most 5,000). A separate immutable
+  `training-state.json` release asset and mutable `training-checkpoint`
+  retain the complete dated news archive. Recovery refuses to substitute a
+  truncated Android payload when full training state cannot be restored.
+- CI explicitly verifies news older than seven days, unrelated headlines,
+  independent publishers, no future leakage, >5,000 historical headlines,
+  signed-package prediction parity, and checkpoint restoration.
+- Offline test success does not establish real-time source availability or
+  superior predictions. Maintain signed Android compatibility and future
+  realized-price accuracy gates before deployment.
+
 ## Installed Android compatibility blocker
 
 The Java contract tests compile the **proposed shared core**, not an already
