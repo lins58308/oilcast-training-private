@@ -99,6 +99,31 @@ means the pipeline is internally consistent, **not** that future forecasts are a
   superior predictions. Maintain signed Android compatibility and future
   realized-price accuracy gates before deployment.
 
+## Supervised event-to-price outcomes
+
+The training target for each fuel is `CPC_effective_price(t+1) - CPC_effective_price(t)`,
+not news volume or a future price inserted as a feature. At each weekly origin
+`t`, the 26-dimensional vector includes known CPC history, Brent/WTI
+movements, USD/TWD changes, six news-event categories, and source coverage.
+Rolling-origin fitting repeatedly compares candidates against the actual CPC
+outcome for the next Monday. Historical archive items discovered later have
+`availableAt` later and cannot enter an older origin.
+
+Every fitted fuel package now includes a `historicalDrivers` evidence table
+for Brent, WTI, USD/TWD and six news-event classes. It reports only matched
+origins with valid signals, positive/negative exposure counts, the observed
+average next-week change, effect difference and Pearson correlation when
+identifiable. Fewer than eight exposed and unexposed origins is marked
+insufficient. **Association is not causation**: regulated pricing,
+government smoothing and delayed announcements may account for outcomes.
+
+The news/market factors are already used as supervised candidate regressors
+and NN inputs, not merely stored for display. Model selection continues to
+compare their out-of-time errors against an unchanged-price baseline. A poor
+news-driven candidate remains in the comparison report rather than displacing
+the safe active model. Tests mutate older news and confirm fitted model
+weights change; they also verify event-origin dates precede the CPC label.
+
 ## Installed Android compatibility blocker
 
 The Java contract tests compile the **proposed shared core**, not an already
