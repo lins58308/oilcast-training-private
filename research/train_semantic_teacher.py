@@ -169,8 +169,12 @@ def fit_ridge_chronologically(x, y, train_end, tune_end):
     scale = np.maximum(design[:train_end].std(axis=0), .1)
     z = np.clip((design - mean) / scale, -6, 6)
     z = np.concatenate([np.ones((len(z), 1)), z], axis=1)
-    gram = z[:train_end].T @ z[:train_end]
-    rhs = z[:train_end].T @ y[:train_end].astype(np.float64)
+    # Give all 27 years a nonzero vote while accommodating evolving CPC
+    # stabilization and tax policy; never discard early years.
+    age = train_end - 1 - np.arange(train_end)
+    recency = np.maximum(.5, np.exp(-age / 156.0))
+    gram = z[:train_end].T @ (recency[:, None] * z[:train_end])
+    rhs = z[:train_end].T @ (recency[:, None] * y[:train_end].astype(np.float64))
     penalize = np.eye(gram.shape[0])
     penalize[0, 0] = 0
     best_mae, best_lambda, best_prediction = float("inf"), None, None
@@ -313,7 +317,10 @@ def fit_and_report(data, args):
             smooth = torch.nn.functional.smooth_l1_loss(prediction, label, reduction="none", beta=.25)
             # Lower aggressive 'changed week' oversampling; reduce false alarms.
             weight = torch.where(label.abs() >= .049, 1.15, 1.0)
-            loss = (smooth * weight).mean()
+            age = (stop_start - 1 - indices).to(torch.float32)
+            historical_weight = torch.maximum(torch.full_like(age, .5), torch.exp(-age / 156.0))
+            loss = (smooth * weight * historical_weight.unsqueeze(-1)).sum() / (
+                historical_weight.sum() * label.shape[-1])
             if not torch.isfinite(loss):
                 raise ValueError("Numerical instability in deep model")
             optimizer.zero_grad(set_to_none=True)
@@ -384,6 +391,7 @@ def fit_and_report(data, args):
         "lastEpoch": len(curves), "elapsedSeconds": round(time.monotonic() - started, 2),
         "split": {"trainCoreWeeks": stop_start, "earlyStopWeeks": val_start-stop_start,
                   "selectionWeeks": test_start-val_start, "blindHoldoutWeeks": len(y)-test_start},
+        "historicalSampleWeight": "max(0.5, exp(-weeklyAge/156)); all 27 years used",
         "modelSelection": choices,
         "simpleRidge": {"chosenLambdaOnEarlyStop": ridge_lambda,
                         "earlyStopMae": round(ridge_stop_mae, 5)},
