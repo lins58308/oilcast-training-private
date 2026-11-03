@@ -14,12 +14,13 @@ import numpy as np
 from catboost import CatBoostRegressor, CatBoostClassifier
 from dubai_proxy import parse_dubai_csv, lagged_dubai_features
 from official_daily_oil import parse_moea_daily, point_in_time_weekly
+from policy_features import feature_for_period
 
 SEED = 20261103
 FUEL_NAMES = ("92", "95", "98", "diesel")
 
 
-def make_week_data(data, dubai_monthly=None, official_daily=None):
+def make_week_data(data, dubai_monthly=None, official_daily=None, policy=None, late_nowcast=False):
     if data.get("schema") != 1 or data.get("featureDimension") != 26:
         raise ValueError("Unexpected research dataset schema")
     weeks = data["examples"]
@@ -51,12 +52,25 @@ def make_week_data(data, dubai_monthly=None, official_daily=None):
     dubai_vectors = None
     official_vectors = None
     official_count = 0
+    policy_vectors = None
+    policy_count = 0
+    late_vectors = None
+    late_count = 0
     if dubai_monthly is not None:
         dubai_vectors, dubai_added = lagged_dubai_features(weeks, dubai_monthly)
     if official_daily is not None:
         if dubai_monthly is None:
             raise ValueError('Official daily benchmark requires fixed monthly baseline dimensions')
         official_vectors, official_count = point_in_time_weekly(weeks,official_daily)
+    if policy is not None:
+        if dubai_monthly is None or official_daily is None:
+            raise ValueError("CPC policy experiments require stable 46-feature quote baseline")
+        policy_vectors,policy_count=feature_for_period(weeks,policy)
+    if late_nowcast:
+        if policy is None or official_daily is None:
+            raise ValueError("Saturday models require fixed 58-feature Monday policy baseline")
+        late_vectors,late_count = point_in_time_weekly(
+            weeks,official_daily,forecast_offset_days=5)
     features = []
     for k in range(n):
         line = []
@@ -75,10 +89,18 @@ def make_week_data(data, dubai_monthly=None, official_daily=None):
                 # Verified government daily Dubai/Brent, 70/30 signal.
                 # All underlying quotes must precede current CPC origin.
                 common = np.concatenate((common,official_vectors[k]))
+            if policy_vectors is not None:
+                common = np.concatenate((common,policy_vectors[k][f]))
+            if late_vectors is not None:
+                # These spot quotes were observable as of Saturday, before
+                # the target-price announcement on Sunday. This is a TWO-
+                # DAY nowcast, not comparable as the same lead-time as
+                # Monday's original seven-day forecast.
+                common=np.concatenate((common,late_vectors[k]))
             line.append(common)
         features.append(line)
     x = np.asarray(features, dtype=np.float32)
-    return x, y, weeks, dubai_added, official_count
+    return x, y, weeks, dubai_added, official_count, policy_count, late_count
 
 
 def scoring(actual, delta):
@@ -125,10 +147,26 @@ def train_predict(x, y, train_end, predict_start, predict_end, family, depth=4, 
         selected = list(range(34)) + list(range(39,46))
     elif family == "moea-hurdle":
         selected = list(range(34)) + list(range(39,46))
+    elif family == "policy-market":
+        selected = list(range(18)) + list(range(26,34)) + list(range(46,58))
+    elif family == "policy-all":
+        selected = list(range(34)) + list(range(39,58))
+    elif family == "policy-moea":
+        selected = list(range(18)) + list(range(26,34)) + list(range(39,58))
+    elif family == "policy-hurdle":
+        selected = list(range(18)) + list(range(26,34)) + list(range(46,58))
+    elif family == "nowcast-market":
+        selected = list(range(18)) + list(range(26,34)) + list(range(58,65))
+    elif family == "nowcast-policy":
+        selected = list(range(18)) + list(range(26,34)) + list(range(46,65))
+    elif family == "nowcast-policy-hurdle":
+        selected = list(range(18)) + list(range(26,34)) + list(range(46,65))
+    elif family == "nowcast-mechanism":
+        selected = list(range(10))+[12]+list(range(26,34))+list(range(58,65))
     else:
         raise ValueError("Unknown family")
     source, query = source[:,selected],query[:,selected]
-    if family in ("hurdle", "hurdle-dubai","moea-hurdle"):
+    if family in ("hurdle", "hurdle-dubai","moea-hurdle","policy-hurdle","nowcast-policy-hurdle"):
         active = (np.abs(labels) >= .049).astype(int)
         classifier = CatBoostClassifier(
             iterations=iterations,depth=depth,learning_rate=.035,
@@ -157,6 +195,16 @@ def train_predict(x, y, train_end, predict_start, predict_end, family, depth=4, 
 
 
 def predict_family(x,y,start,end,family):
+    if family.startswith("policy-gate"):
+        if x.shape[-1] not in (58,65):raise ValueError("Missing CPC policy features")
+        min_streak=int(family[len("policy-gate"):])
+        if min_streak not in (1,2,4):raise ValueError("Unsupported freeze gate")
+        pred=train_predict(x,y,start,start,end,"market")
+        recent=x[start:end]
+        source=(recent[:,:,46]>.5)&(recent[:,:,52]>.5)&(recent[:,:,53]>.5)
+        duration=recent[:,:,56]>=(min_streak/8-.001)
+        prior_absorption=recent[:,:,49]>=2.
+        return np.where(source&duration&prior_absorption,0,pred)
     if "-shrink" in family:
         base, shrink = family.split("-shrink")
         if shrink not in ("25", "50", "75"):
@@ -178,13 +226,16 @@ def main():
     p.add_argument("--dataset",required=True)
     p.add_argument("--dubai-csv",default=None,help="Verified FRED monthly Dubai CSV; research only")
     p.add_argument("--official-daily",default=None,help="MOEA government daily Dubai Brent CSV 6029; research only")
+    p.add_argument("--cpc-policy",default=None,help="Archived CPC press releases embargoed until publication day")
+    p.add_argument("--saturday-nowcast",action="store_true",help="Separate Saturday 2-day-ahead forecast before CPC Sunday announcement")
     p.add_argument("--output",default="output/accuracy-lab")
     p.add_argument("--variant",choices=("v6","v7"),required=True)
     args=p.parse_args()
     data=json.loads(pathlib.Path(args.dataset).read_text())
     dubai = parse_dubai_csv(pathlib.Path(args.dubai_csv).read_text()) if args.dubai_csv else None
     official=parse_moea_daily(pathlib.Path(args.official_daily).read_bytes()) if args.official_daily else None
-    x,y,rows,dubai_added,official_count=make_week_data(data,dubai,official)
+    policy=json.loads(pathlib.Path(args.cpc_policy).read_text()) if args.cpc_policy else None
+    x,y,rows,dubai_added,official_count,policy_count,late_count=make_week_data(data,dubai,official,policy,args.saturday_nowcast)
     n=len(x)
     audit=n-13
     # 3 pre-audit periods, spaced across different historical regimes.
@@ -208,6 +259,12 @@ def main():
     if official is not None:
         families += ("moea-market", "moea-all", "moea-hurdle",
                      "moea-market-shrink50")
+    if policy is not None:
+        families += ("policy-market","policy-all","policy-moea",
+                     "policy-hurdle","policy-gate1","policy-gate2","policy-gate4")
+    if args.saturday_nowcast:
+        families += ("nowcast-market","nowcast-policy",
+                     "nowcast-mechanism","nowcast-policy-hurdle")
     history={}
     for family in families:
         vals=[]
@@ -240,11 +297,18 @@ def main():
         "monthlyDubaiDataUsed": dubai is not None,
         "monthlyDubaiAvailableWeekCount": dubai_added,
         "officialDailyDubaiAvailableWeekCount": official_count,
+        "cpcPolicyAnnouncementWeeks":policy_count,
+        "saturdayNowcastAvailableWeeks":late_count,
+        "twoDistinctForecastHorizons":True,
+        "saturdayNowcastAsOf":"Saturday 00:00 Asia/Taipei before Sunday 12:00 CPC announcement",
+        "dailyQuotePublicationLagDays":3,
+        "cpcPolicyArticleCount":len(policy["notices"]) if policy else 0,
+        "cpcPolicyHistoricalDataOnly":True,
         "officialDailySource": "https://data.gov.tw/dataset/6029" if official is not None else None,
         "officialDailyThreeDayQuoteDelay": True,
         "DubaiEmbargoDaysAfterMonthEnd": 75,
         "monthlyDubaiIsNOTOfficialCpc7D3B": True,
-        "timePointGuarantee":"all stories are published and available at or before origin",
+        "timePointGuarantee":"Historical news and CPC notice publication precede feature origin Monday; target-week Sunday announcements never available",
         "modelFamily":"pooled CatBoost; optional zero-inflated change/no-change",
         "historicalFolds":history,"historicalBaseline":baseline_val,
         "historicalMeanMAE":mean_val,"historicalBaselineMeanMAE":base_mae,
@@ -258,6 +322,8 @@ def main():
     print(json.dumps({"status":"complete","version":args.variant,"weeks":n,
         "baselineVal":base_mae,"candidateVal":mean_val,
         "dubaiAvailableWeeks":dubai_added, "officialDailyAvailableWeeks":official_count,
+        "policyAvailableWeeks":policy_count,
+        "saturdayNowcastAvailableWeeks":late_count,
         "earlierFolds":len(folds),
         "improvedFolds":improved,"selected":choice,
         "locked13WeekMAE":{k:round(v["mae"],4) for k,v in holdout.items()},
