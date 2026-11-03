@@ -25,8 +25,8 @@ class DubaiPointInTimeTest(unittest.TestCase):
         self.assertEqual(month_end(dt.date(2000,2,1)),dt.date(2000,2,29))
         records=parse_dubai_csv(fixture())
         january=next(a for a in records if a[1]==dt.date(2000,1,1))
-        self.assertEqual(january[0],dt.date(2000,4,14))
-        sampled,n=lagged_dubai_features([week("2000-04-13"),week("2000-04-14"),
+        self.assertEqual(january[0],dt.date(2000,4,15))
+        sampled,n=lagged_dubai_features([week("2000-04-14"),week("2000-04-15"),
                                           week("2000-05-15")],records)
         self.assertEqual(n,3)
         # January's full monthly Dubai mean must not leak before +75d.
