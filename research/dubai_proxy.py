@@ -54,7 +54,8 @@ def lagged_dubai_features(weeks, monthly):
     output = []
     available_rows = 0
     for item in weeks:
-        cutoff = dt.date.fromisoformat(item["cutoff"][:10])
+        # Convert local CPC Monday, NOT preceding UTC Sunday.
+        cutoff = dt.date.fromisoformat(item["origin"])
         ix = bisect.bisect_right(dates, cutoff) - 1
         if ix < 1:
             output.append((0.0, 0.0, 0.0, 0.0, 0.0))
