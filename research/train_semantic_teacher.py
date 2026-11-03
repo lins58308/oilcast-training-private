@@ -115,7 +115,7 @@ def train_only_pca(news, end, components=32):
         scores = np.pad(scores, ((0, 0), (0, components - k)))
     return scores.astype(np.float32)
 
-def prepare(rows, semantic, sequence=4):
+def prepare(rows, semantic, policy_payload=None, sequence=4):
     numeric = np.array([r["features"] for r in rows], dtype=np.float32)
     # CPC's 70% Dubai + 30% Brent benchmark is a major omitted driver.
     # Append only deliberately lagged monthly Dubai proxies, never current
@@ -124,6 +124,15 @@ def prepare(rows, semantic, sequence=4):
     if dubai.shape != (len(rows), 4) or not np.isfinite(dubai).all():
         raise ValueError("Invalid lagged Dubai policy proxies")
     numeric = np.concatenate((numeric, np.repeat(dubai[:, None, :], 4, axis=1)), axis=2)
+    # Every policy announcement belongs to a prior dated week. The latest
+    # Sunday before the TARGET Monday is off limits to the origin Monday.
+    if policy_payload is not None:
+        from policy_features import feature_for_period
+        policy_rows,covered=feature_for_period(rows,policy_payload)
+        policy_np=np.asarray(policy_rows,dtype=np.float32)
+        if policy_np.shape!=(len(rows),4,12) or not np.isfinite(policy_np).all():
+            raise ValueError("Causal CPC policy state has wrong shape")
+        numeric=np.concatenate((numeric,policy_np),axis=2)
     targets = np.array([r["nextWeekDeltas"] for r in rows], dtype=np.float32)
     if not np.isfinite(numeric).all() or not np.isfinite(targets).all():
         raise ValueError("Nonfinite CPC, market, or news features")
@@ -291,7 +300,8 @@ def fit_and_report(data, args):
     print(json.dumps({"stage": "encoder_ready", "paramsClass": "frozen pretrained multilingual model",
                       "embeddingDimension": dim, "checkpoint": commit, "device": str(device)}), flush=True)
     semantic = weekly_embeddings(rows, vectors, dim)
-    x, y, val_start, test_start, _ = prepare(rows, semantic)
+    cpc_policy=(json.loads(Path(args.cpc_policy).read_text()) if args.cpc_policy else None)
+    x, y, val_start, test_start, input_fuel_dimensions = prepare(rows, semantic,cpc_policy)
     # Strict chronological nested split: core fit / early stopping / selection
     # / final 13-week blind audit. Never reuse early-stop weeks to select
     # the model family or output threshold.
@@ -382,7 +392,10 @@ def fit_and_report(data, args):
         "pretrainedEncoder": args.encoder, "encoderRevision": commit,
         "encoderFrozen": True, "device": str(device),
         "weeklyExamples": len(rows), "uniqueNews": len(vectors),
-        "numericalFeaturesPerFuel": 30, "originalAndroidFeatureDimension": 26,
+        "numericalFeaturesPerFuel": input_fuel_dimensions, "originalAndroidFeatureDimension": 26,
+        "cpcPolicyNotices": len(cpc_policy["notices"]) if cpc_policy else 0,
+        "policyAnnouncementReleaseRule": cpc_policy.get("availabilityRule") if cpc_policy else None,
+        "policyUsedOnlyIfKnownByOrigin": cpc_policy is not None,
         "dubaiProxy": data.get("policyProxyProvenance", {"missing": True}),
         "dubaiWeeks": int(sum(r.get("policyProxy", [0., 0., 0., 0.])[-1] > 0 for r in rows)),
         "newsPcaDimensions": 32,
@@ -426,6 +439,7 @@ def fit_and_report(data, args):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", required=True)
+    parser.add_argument("--cpc-policy", default=None, help="Official dated CPC absorption announcements known by each origin")
     parser.add_argument("--output", default="output/semantic")
     parser.add_argument("--variant", choices=("v6", "v7"), required=True)
     parser.add_argument("--encoder", default="intfloat/multilingual-e5-base")
