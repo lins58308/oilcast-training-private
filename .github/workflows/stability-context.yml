@@ -9,13 +9,15 @@ permissions:
 jobs:
   probe-context:
     runs-on: ubuntu-24.04
-    timeout-minutes: 12
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: false
       - name: Verify dated neighbor tables and news first-seen archives
         run: python3 research/collect_stability_context.py --policy data/research/cpc-policy-20261103.json --output output/stability-context --probe
+      - name: Preserve dated neighbor history and weekly first-seen risk signals
+        run: python3 research/collect_stability_context.py --policy data/research/cpc-policy-20261103.json --output output/stability-context/full --friday-start 2013-04-05
       - name: Preserve provenance and source failures
         if: always()
         uses: actions/upload-artifact@v4
