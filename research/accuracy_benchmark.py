@@ -196,7 +196,7 @@ def train_predict(x, y, train_end, predict_start, predict_end, family, depth=4, 
 
 def predict_family(x,y,start,end,family):
     if family.startswith("policy-gate"):
-        if x.shape[-1]!=58:raise ValueError("Missing CPC policy features")
+        if x.shape[-1] not in (58,65):raise ValueError("Missing CPC policy features")
         min_streak=int(family[len("policy-gate"):])
         if min_streak not in (1,2,4):raise ValueError("Unsupported freeze gate")
         pred=train_predict(x,y,start,start,end,"market")
