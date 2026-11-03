@@ -1,5 +1,7 @@
 # Four-fuel MAE optimization, 2026-11-03
 
+最新的實際逐週重訓、新聞／鄰國資料與十個候選驗證，見 [STABILITY-20261103.md](STABILITY-20261103.md)；穩定全面超越基準仍未達成。
+
 ## Inputs and chronology
 
 Original v6 source: `993ae6e4b593d929f6522e2706bb7e675b6004ca`.

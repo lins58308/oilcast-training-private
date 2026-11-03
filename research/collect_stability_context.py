@@ -192,12 +192,13 @@ def merge_contexts(paths,output):
     return result
 
 
-def collect(policy,output,probe=False,friday_start=None,shard=0,shards=1,workers=4,resume=False,max_seconds=1000):
+def collect(policy,output,probe=False,friday_start=None,shard=0,shards=1,workers=4,resume=False,max_seconds=1000,skip_neighbors=False):
     if not 0<=shard<shards or not 1<=shards<=16 or not 1<=workers<=8:raise ValueError('Invalid bounded worker/shard count')
     started=time.monotonic()
     output=Path(output);output.mkdir(parents=True,exist_ok=True)
     payload=json.loads(Path(policy).read_text());notices=payload['notices']
     selected=([notices[0],notices[len(notices)//2],notices[-1]] if probe else notices) if shard==0 else []
+    if skip_neighbors:selected=[]
     neighbor=[];errors=[];gdelt=[]
     policy_hash=hashlib.sha256(Path(policy).read_bytes()).hexdigest()
     if resume and (output/'context.json').exists():
@@ -219,6 +220,7 @@ def collect(policy,output,probe=False,friday_start=None,shard=0,shards=1,workers
             'collectionComplete':complete,'policySourceSha256':policy_hash,
             'shard':shard,'shards':shards,'requestedGdeltDates':[d.isoformat() for d in days],
             'historicalNeighborCoverageSufficient':len(neighbor)>=100,
+            'neighborCollectionSkipped':skip_neighbors,'requiredSource':'GDELT first-seen Friday samples',
             'neighbors':sorted(neighbor,key=lambda r:r['publishedDate']),'gdelt':sorted(gdelt,key=lambda r:r['date']),
             'errors':errors,'noAutomaticPromotion':True,'noArticleBodiesRetained':True}
         target=output/'context.json';temporary=output/'context.partial.json'
@@ -267,7 +269,8 @@ if __name__=='__main__':
     p.add_argument('--shard',type=int,default=0);p.add_argument('--shards',type=int,default=1)
     p.add_argument('--workers',type=int,default=4);p.add_argument('--resume',action='store_true')
     p.add_argument('--max-seconds',type=int,default=1000);p.add_argument('--merge',nargs='+')
+    p.add_argument('--skip-neighbors',action='store_true',help='Keep unavailable optional CPC tables masked; do not block the first-seen risk stream')
     a=p.parse_args()
     if a.merge:merge_contexts(a.merge,a.output)
-    elif a.policy:collect(a.policy,a.output,a.probe,a.friday_start,a.shard,a.shards,a.workers,a.resume,a.max_seconds)
+    elif a.policy:collect(a.policy,a.output,a.probe,a.friday_start,a.shard,a.shards,a.workers,a.resume,a.max_seconds,a.skip_neighbors)
     else:p.error('--policy is required for acquisition')
