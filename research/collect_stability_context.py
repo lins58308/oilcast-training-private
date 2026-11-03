@@ -54,7 +54,7 @@ def aggregate_gdelt(raw,day):
         seen=set();tones=[];last_added=dt.datetime.combine(day,dt.time(),UTC)
         future=0
         with archive.open(files[0]) as source:
-            for row in csv.reader(io.TextIOWrapper(source,encoding='utf-8'),delimiter='\t'):
+            for row in csv.reader(io.TextIOWrapper(source,encoding='utf-8'),delimiter='\t',quoting=csv.QUOTE_NONE):
                 if len(row)!=58:raise ValueError("Expected 58-field GDELT v1 daily stream")
                 added=row[56]
                 if not added.isdecimal() or len(added) not in (8,14):raise ValueError("Missing DATEADDED provenance")
@@ -154,50 +154,120 @@ def cpc_neighbors(raw,notice):
         'isRetailGapProxyNotOfficialPreTaxCeiling':True}
 
 
-def collect(policy,output,probe=False,friday_start=None):
+def fetch_gdelt_day(day):
+    url='https://data.gdeltproject.org/events/'+day.strftime('%Y%m%d')+'.export.CSV.zip'
+    return aggregate_gdelt(download(url,MAX_ZIP),day)
+
+
+def merge_contexts(paths,output):
+    sources=[json.loads(Path(p).read_text()) for p in paths]
+    if not sources or any(s.get('probeOnly') or not s.get('collectionComplete') for s in sources):
+        raise ValueError('Every source shard must be complete and not a probe')
+    counts={s['shards'] for s in sources}
+    if len(counts)!=1 or len(sources)!=next(iter(counts)) or {s['shard'] for s in sources}!=set(range(len(sources))):
+        raise ValueError('A complete set of distinct source shards is required')
+    hashes={s['policySourceSha256'] for s in sources}
+    if len(hashes)!=1:raise ValueError('Source shards have different frozen policy inputs')
+    result={**sources[0],'neighbors':[],'gdelt':[],'errors':[],'shard':None,
+        'mergedSourceShards':len(sources),'retrievedAt':dt.datetime.now(UTC).isoformat()}
+    for key,identity in (('neighbors','id'),('gdelt','date')):
+        unique={}
+        for source in sources:
+            for row in source[key]:
+                prior=unique.get(row[identity])
+                if prior is not None and prior!=row:raise ValueError('Conflicting source observations')
+                unique[row[identity]]=row
+        result[key]=sorted(unique.values(),key=lambda r:r[identity])
+    requested=set()
+    for source in sources:
+        requested.update(source['requestedGdeltDates']);result['errors'].extend(source['errors'])
+    result['requestedGdeltDates']=sorted(requested)
+    result['historicalNeighborCoverageSufficient']=len(result['neighbors'])>=100
+    if len(result['gdelt'])<.9*len(requested):raise ValueError('Insufficient first-seen source coverage')
+    target=Path(output)/'context.json';target.parent.mkdir(parents=True,exist_ok=True)
+    target.write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')
+    print(json.dumps({'stage':'merged-context','neighbors':len(result['neighbors']),
+        'gdelt':len(result['gdelt']),'requestedDates':len(requested),
+        'historicalNeighborCoverageSufficient':result['historicalNeighborCoverageSufficient']}),flush=True)
+    return result
+
+
+def collect(policy,output,probe=False,friday_start=None,shard=0,shards=1,workers=4,resume=False,max_seconds=1000):
+    if not 0<=shard<shards or not 1<=shards<=16 or not 1<=workers<=8:raise ValueError('Invalid bounded worker/shard count')
+    started=time.monotonic()
     output=Path(output);output.mkdir(parents=True,exist_ok=True)
     payload=json.loads(Path(policy).read_text());notices=payload['notices']
-    selected=([notices[0],notices[len(notices)//2],notices[-1]] if probe else notices)
-    neighbor=[];errors=[]
-    def fetch_notice(n):return cpc_neighbors(download(n['url'],600_000),n)
-    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
-        futures={pool.submit(fetch_notice,n):n for n in selected}
-        for i,future in enumerate(concurrent.futures.as_completed(futures),1):
-            n=futures[future]
-            try:neighbor.append(future.result())
-            except Exception as exc:errors.append({'id':n['id'],'error':str(exc)[:180]})
-            if i%40==0:print(json.dumps({'stage':'neighbors','completed':i,'valid':len(neighbor),'errors':len(errors)}),flush=True)
-    gdelt=[]
+    selected=([notices[0],notices[len(notices)//2],notices[-1]] if probe else notices) if shard==0 else []
+    neighbor=[];errors=[];gdelt=[]
+    policy_hash=hashlib.sha256(Path(policy).read_bytes()).hexdigest()
+    if resume and (output/'context.json').exists():
+        prior=json.loads((output/'context.json').read_text())
+        if prior['policySourceSha256']!=policy_hash or prior.get('probeOnly')!=probe:
+            raise ValueError('Resume inputs differ from the frozen source inputs')
+        if prior.get('shard')!=shard or prior.get('shards')!=shards:
+            raise ValueError('Resume source partition differs')
+        neighbor=prior['neighbors'];errors=prior['errors'];gdelt=prior['gdelt']
     days=([dt.date(2013,4,5),dt.date(2019,1,4),dt.date(2026,9,4)] if probe else [])
     if friday_start:
         start=dt.date.fromisoformat(friday_start)
         if start.weekday()!=4 or start<dt.date(2013,4,5):raise ValueError('Friday source stream starts no earlier than 2013-04-05')
         end=dt.date(2026,10,30)
         days=[start+dt.timedelta(days=7*i) for i in range((end-start).days//7+1)]
-    def fetch_day(day):
-        try:
-            url='https://data.gdeltproject.org/events/'+day.strftime('%Y%m%d')+'.export.CSV.zip'
-            return aggregate_gdelt(download(url,MAX_ZIP),day)
-        finally:time.sleep(.5)
+    days=days[shard::shards]
+    def checkpoint(complete=False):
+        result={'schema':1,'retrievedAt':dt.datetime.now(UTC).isoformat(),'probeOnly':probe,
+            'collectionComplete':complete,'policySourceSha256':policy_hash,
+            'shard':shard,'shards':shards,'requestedGdeltDates':[d.isoformat() for d in days],
+            'historicalNeighborCoverageSufficient':len(neighbor)>=100,
+            'neighbors':sorted(neighbor,key=lambda r:r['publishedDate']),'gdelt':sorted(gdelt,key=lambda r:r['date']),
+            'errors':errors,'noAutomaticPromotion':True,'noArticleBodiesRetained':True}
+        target=output/'context.json';temporary=output/'context.partial.json'
+        temporary.write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n');temporary.replace(target)
+        return result
+    def fetch_notice(n):return cpc_neighbors(download(n['url'],600_000),n)
+    attempted={r['id'] for r in neighbor}|{r['id'] for r in errors if 'id' in r}
+    selected=[n for n in selected if n['id'] not in attempted]
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
-        futures={pool.submit(fetch_day,day):day for day in days}
+        futures={pool.submit(fetch_notice,n):n for n in selected}
+        for i,future in enumerate(concurrent.futures.as_completed(futures),1):
+            n=futures[future]
+            try:neighbor.append(future.result())
+            except Exception as exc:errors.append({'id':n['id'],'error':str(exc)[:180]})
+            if i%10==0:checkpoint()
+            if i%40==0:print(json.dumps({'stage':'neighbors','completed':i,'valid':len(neighbor),'errors':len(errors)}),flush=True)
+    checkpoint()
+    done={r['date'] for r in gdelt}
+    pending=[d for d in days if d.isoformat() not in done]
+    errors=[r for r in errors if r.get('date') not in {d.isoformat() for d in pending}]
+    # ZIP/TSV parsing is CPU work; threads serialize it under Python's GIL.
+    # Independent shards and processes keep each acquisition below the job cap.
+    with concurrent.futures.ProcessPoolExecutor(max_workers=workers) as pool:
+        futures={pool.submit(fetch_gdelt_day,day):day for day in pending}
         for i,future in enumerate(concurrent.futures.as_completed(futures),1):
             day=futures[future]
             try:gdelt.append(future.result())
             except Exception as exc:errors.append({'date':day.isoformat(),'error':str(exc)[:180]})
+            if i%10==0:checkpoint()
             if i%40==0:print(json.dumps({'stage':'gdelt-first-seen','completed':i,'valid':len(gdelt),'errors':len(errors)}),flush=True)
-    result={'schema':1,'retrievedAt':dt.datetime.now(UTC).isoformat(),'probeOnly':probe,
-        'policySourceSha256':hashlib.sha256(Path(policy).read_bytes()).hexdigest(),
-        'neighbors':sorted(neighbor,key=lambda r:r['publishedDate']),'gdelt':sorted(gdelt,key=lambda r:r['date']),'errors':errors,
-        'noAutomaticPromotion':True,'noArticleBodiesRetained':True}
-    (output/'context.json').write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')
-    print(json.dumps({'stage':'source-context-complete','probe':probe,'neighbors':len(neighbor),'gdelt':len(gdelt),'errors':errors},ensure_ascii=False),flush=True)
-    if friday_start and (len(neighbor)<100 or len(gdelt)<len(days)*.9):
+            if time.monotonic()-started>max_seconds:
+                checkpoint()
+                for item in futures:item.cancel()
+                raise TimeoutError('Acquisition time budget reached; atomic checkpoint preserved for resume')
+    enough=len(gdelt)>=len(days)*.9
+    result=checkpoint(complete=enough)
+    print(json.dumps({'stage':'source-context-complete','probe':probe,'neighbors':len(neighbor),'gdelt':len(gdelt),'errorCount':len(errors)},ensure_ascii=False),flush=True)
+    if not enough:
         raise ValueError('Insufficient dated auxiliary coverage; errors preserved, not filled with zero')
     return result
 
 
 if __name__=='__main__':
-    p=argparse.ArgumentParser();p.add_argument('--policy',required=True);p.add_argument('--output',required=True)
+    p=argparse.ArgumentParser();p.add_argument('--policy');p.add_argument('--output',required=True)
     p.add_argument('--probe',action='store_true');p.add_argument('--friday-start')
-    a=p.parse_args();collect(a.policy,a.output,a.probe,a.friday_start)
+    p.add_argument('--shard',type=int,default=0);p.add_argument('--shards',type=int,default=1)
+    p.add_argument('--workers',type=int,default=4);p.add_argument('--resume',action='store_true')
+    p.add_argument('--max-seconds',type=int,default=1000);p.add_argument('--merge',nargs='+')
+    a=p.parse_args()
+    if a.merge:merge_contexts(a.merge,a.output)
+    elif a.policy:collect(a.policy,a.output,a.probe,a.friday_start,a.shard,a.shards,a.workers,a.resume,a.max_seconds)
+    else:p.error('--policy is required for acquisition')
