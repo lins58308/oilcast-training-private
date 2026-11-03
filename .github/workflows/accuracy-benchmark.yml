@@ -6,11 +6,13 @@ name: OilCast accuracy lab - policy regimes and historic news (read-only)
       - 'fix/v7-accuracy-research-20261103'
       - 'feat/v6-dubai-point-in-time-20261103'
       - 'feat/v7-dubai-point-in-time-20261103'
+      - 'feat/v6-policy-absorption-20261103'
+      - 'feat/v7-policy-absorption-20261103'
 permissions:
   contents: read
 jobs:
   benchmark:
-    if: contains(github.event.head_commit.message, '[run-accuracy]')
+    if: contains(github.event.head_commit.message, '[run-accuracy]') || contains(github.event.head_commit.message, '[run-policy]')
     runs-on: ubuntu-24.04
     timeout-minutes: 50
     steps:
@@ -47,9 +49,11 @@ jobs:
             . output/checkpoint.json output/accuracy-dataset.json "2026-11-03T02:00:00Z"
       - name: Install tabular model and run chronological ablation research
         run: |
-          python3 -m pip install --no-cache-dir 'numpy>=1.26,<3' 'catboost>=1.2.7,<2'
+          python3 -m pip install --no-cache-dir 'numpy>=1.26,<3' 'catboost>=1.2.7,<2' 'requests>=2.31,<3' 'beautifulsoup4>=4.12,<5'
           python3 -m unittest discover -s tests -p 'test_dubai_proxy.py' -v
           python3 -m unittest discover -s tests -p 'test_official_daily_oil.py' -v
+          python3 -m unittest discover -s tests -p 'test_policy_features.py' -v
+          python3 -m unittest discover -s research/tests -p 'test_collect_cpc_policy.py' -v
           curl --fail --location --silent --show-error --retry 3 --max-time 120 \
             'https://fred.stlouisfed.org/graph/fredgraph.csv?id=POILDUBUSDM&cosd=1992-01-01' \
             --output output/dubai-monthly.csv
@@ -64,16 +68,28 @@ jobs:
           print('Verified MOEA daily data:',len(rows),'records, earliest',rows[-1]['日期'],'latest',rows[0]['日期'],flush=True)
           PY
           head -n 2 output/dubai-monthly.csv
+          python3 research/collect_cpc_policy.py --pages 48 --workers 3 \
+            --output output/cpc-policy-history.json
+          python3 - <<'PY'
+          import json
+          s=json.load(open('output/cpc-policy-history.json'))
+          assert s['schema']==1 and s['coverage']['total']>=80
+          assert s['coverage']['latest']>='2026-09-01'
+          print('Verified original CPC policy notices:',s['coverage'],flush=True)
+          PY
           python3 -m py_compile research/accuracy_benchmark.py
           python3 research/accuracy_benchmark.py --dataset output/accuracy-dataset.json \
             --variant "$VARIANT" --dubai-csv output/dubai-monthly.csv \
             --official-daily output/moea-daily.csv \
+            --cpc-policy output/cpc-policy-history.json \
             --output "output/accuracy-$VARIANT"
       - name: Preserve original reproducible benchmark and never publish poor models
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: oilcast-accuracy-lab-${{ github.run_id }}
-          path: output/accuracy-*/accuracy-report.json
+          path: |
+            output/accuracy-*/accuracy-report.json
+            output/cpc-policy-history.json
           if-no-files-found: warn
           retention-days: 30
