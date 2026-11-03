@@ -1,0 +1,49 @@
+name: Preserve verified original CPC policy timepoint dataset
+'on':
+  push:
+    branches: [feat/v6-policy-absorption-20261103, feat/v7-policy-absorption-20261103]
+permissions:
+  contents: write
+  actions: read
+jobs:
+  preserve:
+    if: contains(github.event.head_commit.message, '[save-policy-data]')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: true
+      - name: Restore original dated CPC policy snapshot from research run
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF_NAME" == *v7* ]]; then RUN=41559307646; else RUN=41559298876; fi
+          gh run download "$RUN" --repo lins58308/oilcast-training-private \
+            -n "oilcast-accuracy-lab-$RUN" -D output
+          python3 - <<'PY'
+          import hashlib,json,pathlib
+          s=json.loads(pathlib.Path('output/cpc-policy-history.json').read_text())
+          assert s['schema']==1 and s['notFuturePolicyAnswers'] and len(s['notices'])>=350
+          assert s['coverage']['earliest']<='2019-11-03' and s['coverage']['latest']>='2026-10-31'
+          assert all(r['url'].startswith('https://www.cpc.com.tw/News_Content.aspx?n=28&s=') for r in s['notices'])
+          s['snapshotUTCDate']='2026-11-03'
+          s['originalAuditRun']=int(__import__('os').environ['SOURCE_RUN'])
+          raw=json.dumps(s,ensure_ascii=False,sort_keys=True,separators=(',',':'))
+          path=pathlib.Path('data/research/cpc-policy-20261103.json')
+          path.parent.mkdir(parents=True,exist_ok=True)
+          path.write_text(raw+'\n')
+          print('Saved',len(s['notices']),'dated CPC notices, sha256',hashlib.sha256(raw.encode()).hexdigest(),flush=True)
+          PY
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN: ${{ contains(github.ref_name, 'v7') && '41559307646' || '41559298876' }}
+      - name: Commit research dataset snapshot to branch for reproducible next training
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/research/cpc-policy-20261103.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'data(policy): preserve official 2019–2026 publication-vintage CPC subsidies'
+            git push origin "HEAD:$GITHUB_REF_NAME"
+          fi
