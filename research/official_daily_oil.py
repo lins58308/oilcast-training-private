@@ -27,13 +27,20 @@ def parse_moea_daily(raw):
         day=dt.datetime.strptime(value,"%Y%m%d").date()
         if day in data:raise ValueError("Repeated MOEA crude observation date")
         prices=[]
+        incomplete=False
         for key in expected[1:4]:
             s=row[key].strip()
+            if s.upper() in ("N/A","NA","-",""):
+                incomplete=True
+                break
             try: p=float(s)
-            except ValueError: raise ValueError("MOEA crude daily price missing")
+            except ValueError: raise ValueError("Unrecognized government crude price")
             if not math.isfinite(p) or not 1<=p<=500:
                 raise ValueError("MOEA crude daily price outside valid range")
             prices.append(p)
+        # Missing observations are not zero prices. Keep the gap and never
+        # forward-fill a market quote as though it was published that day.
+        if incomplete:continue
         data[day]=tuple(prices)
     if len(data)<4000 or min(data)>dt.date(2001,1,1):
         raise ValueError("MOEA series insufficient for historical oil training")
