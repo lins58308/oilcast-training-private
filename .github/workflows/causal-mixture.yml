@@ -1,0 +1,67 @@
+name: OilCast CPC shared-gasoline + diesel causal mixture MAE trial
+'on':
+  push:
+    branches:
+      - feat/v6-conservative-mixture-20261103
+      - feat/v7-conservative-mixture-20261103
+permissions:
+  contents: read
+jobs:
+  independent-benchmark:
+    if: contains(github.event.head_commit.message, '[run-mixture]')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.11'
+      - name: Recover dated CPC official prices and historical news
+        run: |
+          set -euo pipefail
+          python3 run_training.py --as-of 2026-09-13T13:00:00Z --output output/demo
+          if [[ "$GITHUB_REF_NAME" == *v7* ]]; then
+            VARIANT=v7; TAG=training-checkpoint-v7
+          else
+            VARIANT=v6; TAG=training-checkpoint
+          fi
+          echo "VARIANT=$VARIANT" >> "$GITHUB_ENV"
+          curl --fail --location --retry 3 --silent --show-error \
+            "https://github.com/lins58308/oilcast-models/releases/download/$TAG/checkpoint.json" \
+            --output output/checkpoint.json
+          java -cp build/classes:build/json.jar tw.oilcast.core.SemanticResearchDataset \
+            . output/checkpoint.json output/mixture-dataset.json "2026-11-03T02:00:00Z"
+      - name: Fit nested time-series change-probability, move-size and gasoline-shared candidates
+        run: |
+          set -euo pipefail
+          python3 -m pip install --no-cache-dir 'numpy>=1.26,<3' 'catboost>=1.2.7,<2'
+          python3 -m unittest discover -s research/candidate_tests -p 'test_causal_mixture.py' -v
+          curl --fail --location --retry 3 --silent --show-error --max-time 120 \
+            'https://fred.stlouisfed.org/graph/fredgraph.csv?id=POILDUBUSDM&cosd=1992-01-01' \
+            --output output/dubai-monthly.csv
+          curl --fail --location --retry 3 --silent --show-error --max-time 120 \
+            'https://www2.moeaea.gov.tw/oil111/csv/GlobalOilOpenData.csv' \
+            --output output/moea-daily.csv
+          test -s data/research/cpc-policy-20261103.json
+          python3 -m py_compile research/causal_mixture_benchmark.py
+          python3 research/causal_mixture_benchmark.py \
+            --dataset output/mixture-dataset.json \
+            --dubai-csv output/dubai-monthly.csv \
+            --official-daily output/moea-daily.csv \
+            --cpc-policy data/research/cpc-policy-20261103.json \
+            --variant "$VARIANT" \
+            --output "output/mixture-$VARIANT-report.json"
+      - name: Preserve all four fuel errors, forecasts and strict no-promotion report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: oilcast-causal-mixture-${{ github.run_id }}
+          path: output/mixture-*-report.json
+          if-no-files-found: warn
+          retention-days: 45
