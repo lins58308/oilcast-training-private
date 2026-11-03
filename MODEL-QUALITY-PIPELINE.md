@@ -4,6 +4,11 @@ Both versions follow the same **time-safe public-data and signed-model pipeline*
 The model is not promised to forecast every price change. Passing integration tests
 means the pipeline is internally consistent, **not** that future forecasts are accurate.
 
+The [2026-11-03 MAE optimization](research/MAE-OPTIMIZATION-20261103.md)
+adds smooth absolute-error fitting, weekly-MAE neural optimization and an
+explicit four-fuel paired audit. Current all-four accuracy gates remain unmet;
+candidate improvement is not production promotion.
+
 ## Common sequence
 
 1. **Synchronize public observations:** CPC effective-date price-change events,
@@ -30,9 +35,9 @@ means the pipeline is internally consistent, **not** that future forecasts are a
   are retained even if CPC did not publish a new price-change event.
 - For the recent-weighted robust regression and v7 neural preprocessing /
   Adam optimization, each older sample gets a recency weight of **at least
-  0.5** of the newest unchanged week's base weight. Price-change emphasis
-  is applied on top of that floor for neural training, never in place of
-  inclusion.
+  0.5** of the newest week's base weight. Neural training now uses smooth absolute
+  loss without 2.5x changed-week oversampling, and unweighted validation MAE
+  for early stopping; all labeled weeks remain included.
 - The JSON `trainingSamples` records **all history after feature warm-up**,
   rather than a cap of 156. `ModelTrainingCoverageTest` changes an early
   (pre-156-week) CPC row and proves that the final fitted parameters change.
@@ -44,10 +49,11 @@ means the pipeline is internally consistent, **not** that future forecasts are a
 4. **Fit competing candidates on past observations:** v6 uses an unchanged-price baseline plus historical-price and
    multi-source ridge/regression alternatives; v7 additionally fits
    a compact deterministic neural net. All four fuels are evaluated separately.
-5. **Time-ordered model comparison:** rolling-origin validation, then a later
-   13-week audit. v6's existing 13-week activation gate is not an unbiased
-   held-out estimate; v7 uses the earlier 39-week validation for selection,
-   leaving the final 13 weeks untouched for audit.
+5. **Time-ordered model comparison:** v6 selects using two earlier,
+   non-overlapping 39-week rolling-origin validation windows; v7 uses the
+   earlier 39-week validation. Neither version uses the final 13 weeks for
+   activation. Research has already inspected the 2026 audit repeatedly;
+   that research period is diagnostic, not a new blind performance estimate.
 6. **Inspect accuracy, not only job success:** compare MAE and RMSE with an
    unchanged-price baseline; separately report direction accuracy, recall when
    CPC actually changes prices, and the false-change rate. The neural candidate

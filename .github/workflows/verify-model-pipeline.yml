@@ -36,6 +36,8 @@ jobs:
       - name: Check timeline, chronology and App model contract
         run: |
           javac --release 11 -cp build/classes:build/json.jar -d build/classes tests/CloudContractTest.java tests/ModelTimelineTest.java tests/ModelTrainingCoverageTest.java tests/NewsHistoryTrainingTest.java tests/ModelDriverEvidenceTest.java tests/PromotionLeakageTest.java tests/SemanticResearchDatasetTest.java tests/CpcHistoricalBackfillTest.java
+          javac --release 11 -cp build/classes:build/json.jar -d build/classes tests/AbsoluteLossTest.java
+          java -cp build/classes:build/json.jar AbsoluteLossTest
           java -cp build/classes:build/json.jar ModelTimelineTest
           java -cp build/classes:build/json.jar ModelTrainingCoverageTest .
           java -cp build/classes:build/json.jar NewsHistoryTrainingTest
@@ -50,6 +52,8 @@ jobs:
           if test -f tests/NeuralLearnerTest.java; then
             javac --release 11 -cp build/classes:build/json.jar -d build/classes tests/NeuralLearnerTest.java
             java -cp build/classes:build/json.jar NeuralLearnerTest
+            javac --release 11 -cp build/classes:build/json.jar -d build/classes tests/NeuralAbsoluteLossTest.java
+            java -cp build/classes:build/json.jar NeuralAbsoluteLossTest
           fi
       - name: Audit held-out error, direction and changed-price recall
         run: python3 tests/model_quality_report.py output/model.json

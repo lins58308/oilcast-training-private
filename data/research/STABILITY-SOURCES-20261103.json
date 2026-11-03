@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "date": "2026-11-03",
+  "gdeltSourceRun": 41588057452,
+  "gdeltValidFiles": 706,
+  "gdeltRequestedFiles": 709,
+  "neighborTables": 32,
+  "neighborOriginalHtmlVintagesVerified": false,
+  "allFourCpcReferencePricesVerified": true,
+  "numericSnapshotEquivalenceToOriginalInputs": "PASS",
+  "noAutomaticPromotion": true,
+  "sha256": {
+    "data/research/stability-inputs-v6-20261103.tar.xz": "e892581c5c2857f5341962f39f3aaf2f3a03f854fb1e7750d48c2508945dbb62",
+    "data/research/stability-inputs-v7-20261103.tar.xz": "f95590e7c0749212ec82702b0f5fe3d8724e4ed41be48bc232eb103932f3a1f3",
+    "data/research/stability-context-20261103.json.gz": "7ee528016f070fe2d6979c8c019a0010800e9dddddc6be924d1e94f16d08398d",
+    "data/research/cpc-neighbor-prices-20261103.json": "5d9cb373f66cf048a76d731bedf8c2d2c0e8ee9d2000e6b455268f3449778959"
+  },
+  "uncompressedContextSha256": "94ca57ad3eb8271fd8262ef7adb9555a83814de3ae9a7aaf5353d0c7153f236d"
+}

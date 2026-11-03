@@ -1,0 +1,860 @@
+{
+  "schema": 1,
+  "variant": "v7",
+  "candidateSpecs": [
+    {
+      "name": "ridge-market",
+      "learner": "ridge",
+      "inputs": "market",
+      "complexity": 30.0
+    },
+    {
+      "name": "linear-mae-market",
+      "learner": "linear-mae",
+      "inputs": "market",
+      "complexity": 0.01
+    },
+    {
+      "name": "linear-mae-policy",
+      "learner": "linear-mae",
+      "inputs": "policy",
+      "complexity": 0.01
+    },
+    {
+      "name": "hist-mae-market",
+      "learner": "hist-mae",
+      "inputs": "market",
+      "complexity": 7
+    },
+    {
+      "name": "hist-mae-policy",
+      "learner": "hist-mae",
+      "inputs": "policy",
+      "complexity": 7
+    },
+    {
+      "name": "hist-mae-all",
+      "learner": "hist-mae",
+      "inputs": "all",
+      "complexity": 7
+    },
+    {
+      "name": "forest-mae-market",
+      "learner": "forest-mae",
+      "inputs": "market",
+      "complexity": 6
+    },
+    {
+      "name": "forest-mae-policy",
+      "learner": "forest-mae",
+      "inputs": "policy",
+      "complexity": 6
+    }
+  ],
+  "minimumMaeImprovement": 0.01,
+  "minimumWinningFolds": 3,
+  "selectionFolds": [
+    {
+      "start": "2021-05-17",
+      "end": "2021-08-09"
+    },
+    {
+      "start": "2022-05-16",
+      "end": "2022-08-08"
+    },
+    {
+      "start": "2023-05-15",
+      "end": "2023-08-07"
+    },
+    {
+      "start": "2024-05-13",
+      "end": "2024-08-05"
+    },
+    {
+      "start": "2025-05-12",
+      "end": "2025-08-04"
+    }
+  ],
+  "sourceManifest": {
+    "schema": 1,
+    "variant": "v7",
+    "sourceCommit": "2b7fac70aced13e65df157a4882ad3de9a87fb02",
+    "asOf": "2026-11-03T02:00:00Z",
+    "checkpointTag": "training-checkpoint-v7",
+    "weeklyExamples": 1412,
+    "historicalAuditPreviouslyInspected": true,
+    "automaticPromotionApproved": false,
+    "sha256": {
+      "checkpoint.json": "de10863336241758e875c695a5bf117931cb677bdf12155f1452239bcbc95ca3",
+      "dataset.json": "3eaaa92949de1398898b83324b7f409f154cbcf7f14e56db150fc7a8f1c8ebd2",
+      "dubai-monthly.csv": "10f7a5cb65b4591e6e34823b2248b46dcbdde79611f4e638d43acf412a4baf0c",
+      "json.jar": "3cf6cd6892e32e2b4c1c39e0f52f5248a2f5b37646fdfbb79a66b46b618414ed",
+      "moea-daily.csv": "b035e68305452ab57e7841e20d4cab4089fc957831e3242efe28d50931777a46",
+      "policy.json": "9466e47a7dde67974d9aa644a9d4f2c41d01b43068419842f323b86948826478"
+    }
+  },
+  "coverage": {
+    "dailyQuoteWeeks": 1383,
+    "policyWeeks": 365,
+    "newsWeeks": 524,
+    "weeklyExamples": 1412
+  },
+  "preAuditBaseline": [
+    [
+      {
+        "mae": 0.22307692307692323,
+        "rmse": 0.24337372337779034,
+        "directionAccuracy": 0.0,
+        "changedWeekRecall": 0.0,
+        "falseMoveRate": null,
+        "changedWeeks": 13,
+        "falseMoves": 0,
+        "weeks": 13
+      },
+      {
+        "mae": 0.22307692307692323,
+        "rmse": 0.24337372337779034,
+        "directionAccuracy": 0.0,
+        "changedWeekRecall": 0.0,
+        "falseMoveRate": null,
+        "changedWeeks": 13,
+        "falseMoves": 0,
+        "weeks": 13
+      },
+      {
+        "mae": 0.22307692307692378,
+        "rmse": 0.24337372337779112,
+        "directionAccuracy": 0.0,
+        "changedWeekRecall": 0.0,
+        "falseMoveRate": null,
+        "changedWeeks": 13,
+        "falseMoves": 0,
+        "weeks": 13
+      },
+      {
+        "mae": 0.16923076923076918,
+        "rmse": 0.19999999999999998,
+        "directionAccuracy": 0.15384615384615385,
+        "changedWeekRecall": 0.0,
+        "falseMoveRate": 0.0,
+        "changedWeeks": 11,
+        "falseMoves": 0,
+        "weeks": 13
+      }
+    ],
+    [
+      {
+        "mae": 0.19230769230769232,
+        "rmse": 0.2557041559783795,
+        "directionAccuracy": 0.23076923076923078,
+        "changedWeekRecall": 0.0,
+        "falseMoveRate": 0.0,
+        "changedWeeks": 10,
+        "falseMoves": 0,
+        "weeks": 13
+      },
+      {
+        "mae": 0.19230769230769232,
+        "rmse": 0.2557041559783795,
+        "directionAccuracy": 0.23076923076923078,
+        "changedWeekRecall": 0.0,
+        "falseMoveRate": 0.0,
+        "changedWeeks": 10,
+        "falseMoves": 0,
+        "weeks": 13
+      },
+      {
+        "mae": 0.19230769230769232,
+        "rmse": 0.2557041559783794,
+        "directionAccuracy": 0.23076923076923078,
+        "changedWeekRecall": 0.0,
+        "falseMoveRate": 0.0,
+        "changedWeeks": 10,
+        "falseMoves": 0,
+        "weeks": 13
+      },
+      {
+        "mae": 0.19230769230769232,
+        "rmse": 0.2526779647024129,
+        "directionAccuracy": 0.15384615384615385,
+        "changedWeekRecall": 0.0,
+        "falseMoveRate": 0.0,
+        "changedWeeks": 11,
+        "falseMoves": 0,
+        "weeks": 13
+      }
+    ],
+    [
+      {
+        "mae": 0.2999999999999993,
+        "rmse": 0.31744169664558947,
+        "directionAccuracy": 0.0,
+        "changedWeekRecall": 0.0,
+        "falseMoveRate": null,
+        "changedWeeks": 13,
+        "falseMoves": 0,
+        "weeks": 13
+      },
+      {
+        "mae": 0.2999999999999993,
+        "rmse": 0.31744169664558947,
+        "directionAccuracy": 0.0,
+        "changedWeekRecall": 0.0,
+        "falseMoveRate": null,
+        "changedWeeks": 13,
+        "falseMoves": 0,
+        "weeks": 13
+      },
+      {
+        "mae": 0.2999999999999988,
+        "rmse": 0.3174416966455888,
+        "directionAccuracy": 0.0,
+        "changedWeekRecall": 0.0,
+        "falseMoveRate": null,
+        "changedWeeks": 13,
+        "falseMoves": 0,
+        "weeks": 13
+      },
+      {
+        "mae": 0.2230769230769235,
+        "rmse": 0.24961508830135334,
+        "directionAccuracy": 0.07692307692307693,
+        "changedWeekRecall": 0.0,
+        "falseMoveRate": 0.0,
+        "changedWeeks": 12,
+        "falseMoves": 0,
+        "weeks": 13
+      }
+    ],
+    [
+      {
+        "mae": 0.1384615384615388,
+        "rmse": 0.17097008285302243,
+        "directionAccuracy": 0.23076923076923078,
+        "changedWeekRecall": 0.0,
+        "falseMoveRate": 0.0,
+        "changedWeeks": 10,
+        "falseMoves": 0,
+        "weeks": 13
+      },
+      {
+        "mae": 0.1384615384615388,
+        "rmse": 0.17097008285302243,
+        "directionAccuracy": 0.23076923076923078,
+        "changedWeekRecall": 0.0,
+        "falseMoveRate": 0.0,
+        "changedWeeks": 10,
+        "falseMoves": 0,
+        "weeks": 13
+      },
+      {
+        "mae": 0.1384615384615377,
+        "rmse": 0.17097008285302132,
+        "directionAccuracy": 0.23076923076923078,
+        "changedWeekRecall": 0.0,
+        "falseMoveRate": 0.0,
+        "changedWeeks": 10,
+        "falseMoves": 0,
+        "weeks": 13
+      },
+      {
+        "mae": 0.16153846153846219,
+        "rmse": 0.19414506867883055,
+        "directionAccuracy": 0.07692307692307693,
+        "changedWeekRecall": 0.0,
+        "falseMoveRate": 0.0,
+        "changedWeeks": 12,
+        "falseMoves": 0,
+        "weeks": 13
+      }
+    ],
+    [
+      {
+        "mae": 0.23846153846153884,
+        "rmse": 0.36055512754639885,
+        "directionAccuracy": 0.15384615384615385,
+        "changedWeekRecall": 0.0,
+        "falseMoveRate": 0.0,
+        "changedWeeks": 11,
+        "falseMoves": 0,
+        "weeks": 13
+      },
+      {
+        "mae": 0.23846153846153884,
+        "rmse": 0.36055512754639885,
+        "directionAccuracy": 0.15384615384615385,
+        "changedWeekRecall": 0.0,
+        "falseMoveRate": 0.0,
+        "changedWeeks": 11,
+        "falseMoves": 0,
+        "weeks": 13
+      },
+      {
+        "mae": 0.23846153846153884,
+        "rmse": 0.36055512754639885,
+        "directionAccuracy": 0.15384615384615385,
+        "changedWeekRecall": 0.0,
+        "falseMoveRate": 0.0,
+        "changedWeeks": 11,
+        "falseMoves": 0,
+        "weeks": 13
+      },
+      {
+        "mae": 0.31538461538461465,
+        "rmse": 0.4428925898610696,
+        "directionAccuracy": 0.15384615384615385,
+        "changedWeekRecall": 0.0,
+        "falseMoveRate": 0.0,
+        "changedWeeks": 11,
+        "falseMoves": 0,
+        "weeks": 13
+      }
+    ]
+  ],
+  "selectedBeforeAudit": [
+    {
+      "fuels": [
+        "92",
+        "95",
+        "98"
+      ],
+      "selected": "unchanged",
+      "eligibleCandidates": [],
+      "candidateGates": {
+        "ridge-market": {
+          "92": {
+            "meanMae": 0.1969230769230766,
+            "baselineMeanMae": 0.21846153846153848,
+            "winningFolds": 3,
+            "maeGate": true,
+            "consistencyGate": true,
+            "directionGate": true,
+            "falseMoveRate": 0.7222222222222222,
+            "falseMoveGate": false,
+            "changedWeekRecall": 0.4755244755244755,
+            "passed": false
+          },
+          "95": {
+            "meanMae": 0.1969230769230766,
+            "baselineMeanMae": 0.21846153846153848,
+            "winningFolds": 3,
+            "maeGate": true,
+            "consistencyGate": true,
+            "directionGate": true,
+            "falseMoveRate": 0.7222222222222222,
+            "falseMoveGate": false,
+            "changedWeekRecall": 0.4755244755244755,
+            "passed": false
+          },
+          "98": {
+            "meanMae": 0.19692307692307653,
+            "baselineMeanMae": 0.21846153846153832,
+            "winningFolds": 3,
+            "maeGate": true,
+            "consistencyGate": true,
+            "directionGate": true,
+            "falseMoveRate": 0.7222222222222222,
+            "falseMoveGate": false,
+            "changedWeekRecall": 0.4755244755244755,
+            "passed": false
+          }
+        },
+        "linear-mae-market": {
+          "92": {
+            "meanMae": 0.216923076923077,
+            "baselineMeanMae": 0.21846153846153848,
+            "winningFolds": 0,
+            "maeGate": false,
+            "consistencyGate": false,
+            "directionGate": true,
+            "falseMoveRate": 0.1111111111111111,
+            "falseMoveGate": true,
+            "changedWeekRecall": 0.05636363636363637,
+            "passed": false
+          },
+          "95": {
+            "meanMae": 0.216923076923077,
+            "baselineMeanMae": 0.21846153846153848,
+            "winningFolds": 0,
+            "maeGate": false,
+            "consistencyGate": false,
+            "directionGate": true,
+            "falseMoveRate": 0.1111111111111111,
+            "falseMoveGate": true,
+            "changedWeekRecall": 0.05636363636363637,
+            "passed": false
+          },
+          "98": {
+            "meanMae": 0.21692307692307677,
+            "baselineMeanMae": 0.21846153846153832,
+            "winningFolds": 0,
+            "maeGate": false,
+            "consistencyGate": false,
+            "directionGate": true,
+            "falseMoveRate": 0.1111111111111111,
+            "falseMoveGate": true,
+            "changedWeekRecall": 0.05636363636363637,
+            "passed": false
+          }
+        },
+        "linear-mae-policy": {
+          "92": {
+            "meanMae": 0.21538461538461537,
+            "baselineMeanMae": 0.21846153846153848,
+            "winningFolds": 1,
+            "maeGate": false,
+            "consistencyGate": false,
+            "directionGate": true,
+            "falseMoveRate": 0.3333333333333333,
+            "falseMoveGate": false,
+            "changedWeekRecall": 0.33636363636363636,
+            "passed": false
+          },
+          "95": {
+            "meanMae": 0.21538461538461537,
+            "baselineMeanMae": 0.21846153846153848,
+            "winningFolds": 1,
+            "maeGate": false,
+            "consistencyGate": false,
+            "directionGate": true,
+            "falseMoveRate": 0.3333333333333333,
+            "falseMoveGate": false,
+            "changedWeekRecall": 0.33636363636363636,
+            "passed": false
+          },
+          "98": {
+            "meanMae": 0.2153846153846152,
+            "baselineMeanMae": 0.21846153846153832,
+            "winningFolds": 1,
+            "maeGate": false,
+            "consistencyGate": false,
+            "directionGate": true,
+            "falseMoveRate": 0.3333333333333333,
+            "falseMoveGate": false,
+            "changedWeekRecall": 0.33636363636363636,
+            "passed": false
+          }
+        },
+        "hist-mae-market": {
+          "92": {
+            "meanMae": 0.2046153846153845,
+            "baselineMeanMae": 0.21846153846153848,
+            "winningFolds": 4,
+            "maeGate": true,
+            "consistencyGate": true,
+            "directionGate": true,
+            "falseMoveRate": 0.3333333333333333,
+            "falseMoveGate": false,
+            "changedWeekRecall": 0.32965034965034967,
+            "passed": false
+          },
+          "95": {
+            "meanMae": 0.2046153846153845,
+            "baselineMeanMae": 0.21846153846153848,
+            "winningFolds": 4,
+            "maeGate": true,
+            "consistencyGate": true,
+            "directionGate": true,
+            "falseMoveRate": 0.3333333333333333,
+            "falseMoveGate": false,
+            "changedWeekRecall": 0.32965034965034967,
+            "passed": false
+          },
+          "98": {
+            "meanMae": 0.2046153846153842,
+            "baselineMeanMae": 0.21846153846153832,
+            "winningFolds": 4,
+            "maeGate": true,
+            "consistencyGate": true,
+            "directionGate": true,
+            "falseMoveRate": 0.3333333333333333,
+            "falseMoveGate": false,
+            "changedWeekRecall": 0.32965034965034967,
+            "passed": false
+          }
+        },
+        "hist-mae-policy": {
+          "92": {
+            "meanMae": 0.22000000000000006,
+            "baselineMeanMae": 0.21846153846153848,
+            "winningFolds": 2,
+            "maeGate": false,
+            "consistencyGate": false,
+            "directionGate": true,
+            "falseMoveRate": 0.6666666666666666,
+            "falseMoveGate": false,
+            "changedWeekRecall": 0.27958041958041957,
+            "passed": false
+          },
+          "95": {
+            "meanMae": 0.22000000000000006,
+            "baselineMeanMae": 0.21846153846153848,
+            "winningFolds": 2,
+            "maeGate": false,
+            "consistencyGate": false,
+            "directionGate": true,
+            "falseMoveRate": 0.6666666666666666,
+            "falseMoveGate": false,
+            "changedWeekRecall": 0.27958041958041957,
+            "passed": false
+          },
+          "98": {
+            "meanMae": 0.2199999999999997,
+            "baselineMeanMae": 0.21846153846153832,
+            "winningFolds": 2,
+            "maeGate": false,
+            "consistencyGate": false,
+            "directionGate": true,
+            "falseMoveRate": 0.6666666666666666,
+            "falseMoveGate": false,
+            "changedWeekRecall": 0.27958041958041957,
+            "passed": false
+          }
+        },
+        "hist-mae-all": {
+          "92": {
+            "meanMae": 0.2184615384615384,
+            "baselineMeanMae": 0.21846153846153848,
+            "winningFolds": 1,
+            "maeGate": false,
+            "consistencyGate": false,
+            "directionGate": true,
+            "falseMoveRate": 0.5555555555555555,
+            "falseMoveGate": false,
+            "changedWeekRecall": 0.23804195804195807,
+            "passed": false
+          },
+          "95": {
+            "meanMae": 0.2184615384615384,
+            "baselineMeanMae": 0.21846153846153848,
+            "winningFolds": 1,
+            "maeGate": false,
+            "consistencyGate": false,
+            "directionGate": true,
+            "falseMoveRate": 0.5555555555555555,
+            "falseMoveGate": false,
+            "changedWeekRecall": 0.23804195804195807,
+            "passed": false
+          },
+          "98": {
+            "meanMae": 0.21846153846153818,
+            "baselineMeanMae": 0.21846153846153832,
+            "winningFolds": 1,
+            "maeGate": false,
+            "consistencyGate": false,
+            "directionGate": true,
+            "falseMoveRate": 0.5555555555555555,
+            "falseMoveGate": false,
+            "changedWeekRecall": 0.23804195804195807,
+            "passed": false
+          }
+        },
+        "forest-mae-market": {
+          "92": {
+            "meanMae": 0.22153846153846163,
+            "baselineMeanMae": 0.21846153846153848,
+            "winningFolds": 0,
+            "maeGate": false,
+            "consistencyGate": false,
+            "directionGate": true,
+            "falseMoveRate": 0.2222222222222222,
+            "falseMoveGate": true,
+            "changedWeekRecall": 0.03538461538461539,
+            "passed": false
+          },
+          "95": {
+            "meanMae": 0.22153846153846163,
+            "baselineMeanMae": 0.21846153846153848,
+            "winningFolds": 0,
+            "maeGate": false,
+            "consistencyGate": false,
+            "directionGate": true,
+            "falseMoveRate": 0.2222222222222222,
+            "falseMoveGate": true,
+            "changedWeekRecall": 0.03538461538461539,
+            "passed": false
+          },
+          "98": {
+            "meanMae": 0.2215384615384614,
+            "baselineMeanMae": 0.21846153846153832,
+            "winningFolds": 0,
+            "maeGate": false,
+            "consistencyGate": false,
+            "directionGate": true,
+            "falseMoveRate": 0.2222222222222222,
+            "falseMoveGate": true,
+            "changedWeekRecall": 0.03538461538461539,
+            "passed": false
+          }
+        },
+        "forest-mae-policy": {
+          "92": {
+            "meanMae": 0.21384615384615374,
+            "baselineMeanMae": 0.21846153846153848,
+            "winningFolds": 1,
+            "maeGate": false,
+            "consistencyGate": false,
+            "directionGate": true,
+            "falseMoveRate": 0.2222222222222222,
+            "falseMoveGate": true,
+            "changedWeekRecall": 0.14307692307692307,
+            "passed": false
+          },
+          "95": {
+            "meanMae": 0.21384615384615374,
+            "baselineMeanMae": 0.21846153846153848,
+            "winningFolds": 1,
+            "maeGate": false,
+            "consistencyGate": false,
+            "directionGate": true,
+            "falseMoveRate": 0.2222222222222222,
+            "falseMoveGate": true,
+            "changedWeekRecall": 0.14307692307692307,
+            "passed": false
+          },
+          "98": {
+            "meanMae": 0.21384615384615363,
+            "baselineMeanMae": 0.21846153846153832,
+            "winningFolds": 1,
+            "maeGate": false,
+            "consistencyGate": false,
+            "directionGate": true,
+            "falseMoveRate": 0.2222222222222222,
+            "falseMoveGate": true,
+            "changedWeekRecall": 0.14307692307692307,
+            "passed": false
+          }
+        }
+      }
+    },
+    {
+      "fuels": [
+        "diesel"
+      ],
+      "selected": "unchanged",
+      "eligibleCandidates": [],
+      "candidateGates": {
+        "ridge-market": {
+          "diesel": {
+            "meanMae": 0.20615384615384635,
+            "baselineMeanMae": 0.21230769230769236,
+            "winningFolds": 3,
+            "maeGate": false,
+            "consistencyGate": true,
+            "directionGate": true,
+            "falseMoveRate": 0.6,
+            "falseMoveGate": false,
+            "changedWeekRecall": 0.4242424242424242,
+            "passed": false
+          }
+        },
+        "linear-mae-market": {
+          "diesel": {
+            "meanMae": 0.2061538461538462,
+            "baselineMeanMae": 0.21230769230769236,
+            "winningFolds": 1,
+            "maeGate": false,
+            "consistencyGate": false,
+            "directionGate": true,
+            "falseMoveRate": 0.1,
+            "falseMoveGate": true,
+            "changedWeekRecall": 0.1606060606060606,
+            "passed": false
+          }
+        },
+        "linear-mae-policy": {
+          "diesel": {
+            "meanMae": 0.2215384615384616,
+            "baselineMeanMae": 0.21230769230769236,
+            "winningFolds": 1,
+            "maeGate": false,
+            "consistencyGate": false,
+            "directionGate": true,
+            "falseMoveRate": 0.3,
+            "falseMoveGate": false,
+            "changedWeekRecall": 0.3606060606060606,
+            "passed": false
+          }
+        },
+        "hist-mae-market": {
+          "diesel": {
+            "meanMae": 0.21076923076923074,
+            "baselineMeanMae": 0.21230769230769236,
+            "winningFolds": 2,
+            "maeGate": false,
+            "consistencyGate": false,
+            "directionGate": true,
+            "falseMoveRate": 0.5,
+            "falseMoveGate": false,
+            "changedWeekRecall": 0.3151515151515151,
+            "passed": false
+          }
+        },
+        "hist-mae-policy": {
+          "diesel": {
+            "meanMae": 0.20769230769230776,
+            "baselineMeanMae": 0.21230769230769236,
+            "winningFolds": 2,
+            "maeGate": false,
+            "consistencyGate": false,
+            "directionGate": true,
+            "falseMoveRate": 0.6,
+            "falseMoveGate": false,
+            "changedWeekRecall": 0.3151515151515151,
+            "passed": false
+          }
+        },
+        "hist-mae-all": {
+          "diesel": {
+            "meanMae": 0.20923076923076928,
+            "baselineMeanMae": 0.21230769230769236,
+            "winningFolds": 2,
+            "maeGate": false,
+            "consistencyGate": false,
+            "directionGate": true,
+            "falseMoveRate": 0.6,
+            "falseMoveGate": false,
+            "changedWeekRecall": 0.33333333333333337,
+            "passed": false
+          }
+        },
+        "forest-mae-market": {
+          "diesel": {
+            "meanMae": 0.20153846153846167,
+            "baselineMeanMae": 0.21230769230769236,
+            "winningFolds": 2,
+            "maeGate": true,
+            "consistencyGate": false,
+            "directionGate": true,
+            "falseMoveRate": 0.0,
+            "falseMoveGate": true,
+            "changedWeekRecall": 0.2166666666666667,
+            "passed": false
+          }
+        },
+        "forest-mae-policy": {
+          "diesel": {
+            "meanMae": 0.2000000000000001,
+            "baselineMeanMae": 0.21230769230769236,
+            "winningFolds": 2,
+            "maeGate": true,
+            "consistencyGate": false,
+            "directionGate": true,
+            "falseMoveRate": 0.1,
+            "falseMoveGate": true,
+            "changedWeekRecall": 0.30454545454545456,
+            "passed": false
+          }
+        }
+      }
+    }
+  ],
+  "auditLabelsUsedForSelection": false,
+  "selectionSha256": "103f2a3acb6b7ec0eb4e5ca8cec205e09ee604e21aa648ac1f53b74296c80500",
+  "auditPreviouslyInspected": true,
+  "audit": {
+    "start": "2026-08-10",
+    "end": "2026-11-02",
+    "fuels": {
+      "92": {
+        "baseline": {
+          "mae": 0.053846153846153794,
+          "rmse": 0.19414506867883,
+          "directionAccuracy": 0.9230769230769231,
+          "changedWeekRecall": 0.0,
+          "falseMoveRate": 0.0,
+          "changedWeeks": 1,
+          "falseMoves": 0,
+          "weeks": 13
+        },
+        "selected": {
+          "mae": 0.053846153846153794,
+          "rmse": 0.19414506867883,
+          "directionAccuracy": 0.9230769230769231,
+          "changedWeekRecall": 0.0,
+          "falseMoveRate": 0.0,
+          "changedWeeks": 1,
+          "falseMoves": 0,
+          "weeks": 13
+        },
+        "beatsBaselineBy0_01": false
+      },
+      "95": {
+        "baseline": {
+          "mae": 0.053846153846154064,
+          "rmse": 0.19414506867883097,
+          "directionAccuracy": 0.9230769230769231,
+          "changedWeekRecall": 0.0,
+          "falseMoveRate": 0.0,
+          "changedWeeks": 1,
+          "falseMoves": 0,
+          "weeks": 13
+        },
+        "selected": {
+          "mae": 0.053846153846154064,
+          "rmse": 0.19414506867883097,
+          "directionAccuracy": 0.9230769230769231,
+          "changedWeekRecall": 0.0,
+          "falseMoveRate": 0.0,
+          "changedWeeks": 1,
+          "falseMoves": 0,
+          "weeks": 13
+        },
+        "beatsBaselineBy0_01": false
+      },
+      "98": {
+        "baseline": {
+          "mae": 0.053846153846154064,
+          "rmse": 0.19414506867883097,
+          "directionAccuracy": 0.9230769230769231,
+          "changedWeekRecall": 0.0,
+          "falseMoveRate": 0.0,
+          "changedWeeks": 1,
+          "falseMoves": 0,
+          "weeks": 13
+        },
+        "selected": {
+          "mae": 0.053846153846154064,
+          "rmse": 0.19414506867883097,
+          "directionAccuracy": 0.9230769230769231,
+          "changedWeekRecall": 0.0,
+          "falseMoveRate": 0.0,
+          "changedWeeks": 1,
+          "falseMoves": 0,
+          "weeks": 13
+        },
+        "beatsBaselineBy0_01": false
+      },
+      "diesel": {
+        "baseline": {
+          "mae": 0.04615384615384599,
+          "rmse": 0.16641005886756816,
+          "directionAccuracy": 0.9230769230769231,
+          "changedWeekRecall": 0.0,
+          "falseMoveRate": 0.0,
+          "changedWeeks": 1,
+          "falseMoves": 0,
+          "weeks": 13
+        },
+        "selected": {
+          "mae": 0.04615384615384599,
+          "rmse": 0.16641005886756816,
+          "directionAccuracy": 0.9230769230769231,
+          "changedWeekRecall": 0.0,
+          "falseMoveRate": 0.0,
+          "changedWeeks": 1,
+          "falseMoves": 0,
+          "weeks": 13
+        },
+        "beatsBaselineBy0_01": false
+      }
+    }
+  },
+  "allFourHistoricalAuditGatesPassed": false,
+  "automaticPromotionApproved": false,
+  "deploymentBlockers": [
+    "Previously inspected historical audit is not a prospective trial",
+    "Research estimators require compatible Android inference and device validation"
+  ],
+  "fullCandidateScores": "Preserved by .github/workflows/four-fuel-mae.yml in the version-specific result artifact"
+}
