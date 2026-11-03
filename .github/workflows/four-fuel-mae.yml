@@ -1,0 +1,88 @@
+name: OilCast four-fuel frozen MAE evidence (no publishing)
+
+'on':
+  push:
+    branches:
+      - 'fix/four-fuel-mae-v6-20261103'
+      - 'fix/four-fuel-mae-v7-20261103'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  freeze-inputs:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - variant: v6
+            source: 993ae6e4b593d929f6522e2706bb7e675b6004ca
+            checkpoint: training-checkpoint
+          - variant: v7
+            source: 2b7fac70aced13e65df157a4882ad3de9a87fb02
+            checkpoint: training-checkpoint-v7
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - name: Recover each version's immutable source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ matrix.source }}
+          path: source
+          persist-credentials: false
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Export all known weekly examples at the same cutoff
+        env:
+          VARIANT: ${{ matrix.variant }}
+          SOURCE_SHA: ${{ matrix.source }}
+          CHECKPOINT_TAG: ${{ matrix.checkpoint }}
+        run: |
+          set -euo pipefail
+          mkdir -p output/mae-inputs
+          (cd source && python3 run_training.py --as-of 2026-09-13T13:00:00Z --output output/demo)
+          curl --fail --location --retry 3 --silent --show-error --max-time 120 \
+            "https://github.com/lins58308/oilcast-models/releases/download/$CHECKPOINT_TAG/checkpoint.json" \
+            --output output/mae-inputs/checkpoint.json
+          java -cp source/build/classes:source/build/json.jar tw.oilcast.core.SemanticResearchDataset \
+            source output/mae-inputs/checkpoint.json output/mae-inputs/dataset.json '2026-11-03T02:00:00Z'
+          curl --fail --location --retry 3 --silent --show-error --max-time 120 \
+            'https://www2.moeaea.gov.tw/oil111/csv/GlobalOilOpenData.csv' \
+            --output output/mae-inputs/moea-daily.csv
+          curl --fail --location --retry 3 --silent --show-error --max-time 120 \
+            'https://fred.stlouisfed.org/graph/fredgraph.csv?id=POILDUBUSDM&cosd=1992-01-01' \
+            --output output/mae-inputs/dubai-monthly.csv
+          cp data/research/cpc-policy-20261103.json output/mae-inputs/policy.json
+          cp source/build/json.jar output/mae-inputs/json.jar
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib
+          root=pathlib.Path('output/mae-inputs')
+          dataset=json.loads((root/'dataset.json').read_text())
+          assert len(dataset['examples']) >= 1300
+          manifest={
+              'schema':1,'variant':os.environ['VARIANT'],
+              'sourceCommit':os.environ['SOURCE_SHA'],
+              'asOf':'2026-11-03T02:00:00Z',
+              'checkpointTag':os.environ['CHECKPOINT_TAG'],
+              'weeklyExamples':len(dataset['examples']),
+              'historicalAuditPreviouslyInspected':True,
+              'automaticPromotionApproved':False,
+              'sha256':{p.name:hashlib.sha256(p.read_bytes()).hexdigest()
+                        for p in sorted(root.iterdir()) if p.is_file()}}
+          (root/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
+          print(json.dumps(manifest,indent=2))
+          PY
+      - name: Preserve reproducible inputs without touching release channels
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: four-fuel-mae-inputs-${{ matrix.variant }}-${{ github.run_id }}
+          path: output/mae-inputs/
+          if-no-files-found: error
+          retention-days: 45
