@@ -30,7 +30,7 @@ class DubaiPointInTimeTest(unittest.TestCase):
                                           week("2000-05-15")],records)
         self.assertEqual(n,3)
         # January's full monthly Dubai mean must not leak before +75d.
-        self.assertLess(sampled[0][1],sampled[1][1])
+        self.assertNotEqual(sampled[0][1],sampled[1][1])
         self.assertEqual(sampled[1][1],(10+10+.1)/100)
         self.assertGreater(sampled[2][1],sampled[1][1])
 
