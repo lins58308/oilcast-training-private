@@ -1,0 +1,1406 @@
+{
+  "schema": 1,
+  "retrievalDate": "2026-11-03",
+  "method": "Official CPC rendered HTML; dates and original CPC reference prices checked, original HTML vintage not verified",
+  "neighbors": [
+    {
+      "id": "112140",
+      "publishedDate": "2026-03-28",
+      "availableAt": "2026-03-28T15:59:59Z",
+      "countries": {
+        "日本": [
+          35.7,
+          null,
+          37.8,
+          33.3
+        ],
+        "韓國": [
+          39.3,
+          47.6,
+          null,
+          39.2
+        ],
+        "香港": [
+          null,
+          null,
+          131.5,
+          135.5
+        ],
+        "新加坡": [
+          null,
+          84.8,
+          97.7,
+          98
+        ],
+        "台灣中油": [
+          32.4,
+          33.9,
+          35.9,
+          31
+        ]
+      },
+      "source": "https://www.cpc.com.tw/News_Content.aspx?n=28&s=112140",
+      "historicalHtmlVintageVerified": false,
+      "isRetailGapProxyNotOfficialPreTaxCeiling": true,
+      "retrievalMethod": "official rendered HTML source reader",
+      "allFourCpcReferencePricesVerified": true,
+      "sourcePriceDataSha256": "55e0523ca261727c71ad2a44ba25fc7102442700b1d6dc02322c7593f921a5a2"
+    },
+    {
+      "id": "112169",
+      "publishedDate": "2026-04-04",
+      "availableAt": "2026-04-04T15:59:59Z",
+      "countries": {
+        "日本": [
+          34.1,
+          null,
+          36.2,
+          31.9
+        ],
+        "韓國": [
+          40.9,
+          49.5,
+          null,
+          40.7
+        ],
+        "香港": [
+          null,
+          null,
+          132.1,
+          140.2
+        ],
+        "新加坡": [
+          null,
+          85.9,
+          98.8,
+          110
+        ],
+        "台灣中油": [
+          32.4,
+          33.9,
+          35.9,
+          31
+        ]
+      },
+      "source": "https://www.cpc.com.tw/News_Content.aspx?n=28&s=112169",
+      "historicalHtmlVintageVerified": false,
+      "isRetailGapProxyNotOfficialPreTaxCeiling": true,
+      "retrievalMethod": "official rendered HTML source reader",
+      "allFourCpcReferencePricesVerified": true,
+      "sourcePriceDataSha256": "1f1d749f7b7d5acafb2809275e083d519f7d72e4260bb2d7df89440f79f648c8"
+    },
+    {
+      "id": "112192",
+      "publishedDate": "2026-04-11",
+      "availableAt": "2026-04-11T15:59:59Z",
+      "countries": {
+        "日本": [
+          33.5,
+          null,
+          35.6,
+          31.3
+        ],
+        "韓國": [
+          42.5,
+          51.4,
+          null,
+          42.3
+        ],
+        "香港": [
+          null,
+          null,
+          131.5,
+          142
+        ],
+        "新加坡": [
+          null,
+          85.1,
+          98,
+          116.4
+        ],
+        "台灣中油": [
+          32.4,
+          33.9,
+          35.9,
+          31
+        ]
+      },
+      "source": "https://www.cpc.com.tw/News_Content.aspx?n=28&s=112192",
+      "historicalHtmlVintageVerified": false,
+      "isRetailGapProxyNotOfficialPreTaxCeiling": true,
+      "retrievalMethod": "official rendered HTML source reader",
+      "allFourCpcReferencePricesVerified": true,
+      "sourcePriceDataSha256": "478902e03b5b82d958fa209148b05c9aa1d79a87f7a9876a994bb89ea7ae7ad3"
+    },
+    {
+      "id": "112216",
+      "publishedDate": "2026-04-18",
+      "availableAt": "2026-04-18T15:59:59Z",
+      "countries": {
+        "日本": [
+          33.3,
+          null,
+          35.5,
+          31.2
+        ],
+        "韓國": [
+          42.8,
+          51.8,
+          null,
+          42.7
+        ],
+        "香港": [
+          null,
+          null,
+          130.9,
+          143.8
+        ],
+        "新加坡": [
+          null,
+          86.1,
+          99,
+          116.4
+        ],
+        "台灣中油": [
+          32.4,
+          33.9,
+          35.9,
+          31
+        ]
+      },
+      "source": "https://www.cpc.com.tw/News_Content.aspx?n=28&s=112216",
+      "historicalHtmlVintageVerified": false,
+      "isRetailGapProxyNotOfficialPreTaxCeiling": true,
+      "retrievalMethod": "official rendered HTML source reader",
+      "allFourCpcReferencePricesVerified": true,
+      "sourcePriceDataSha256": "6f342f0bb37819c2e220133ac23aab02f80cdf35a6c2ff8569315fad3254bf06"
+    },
+    {
+      "id": "112254",
+      "publishedDate": "2026-04-25",
+      "availableAt": "2026-04-25T15:59:59Z",
+      "countries": {
+        "日本": [
+          33.6,
+          null,
+          35.7,
+          31.4
+        ],
+        "韓國": [
+          42.8,
+          51.8,
+          null,
+          42.7
+        ],
+        "香港": [
+          null,
+          null,
+          130.4,
+          148
+        ],
+        "新加坡": [
+          null,
+          85.6,
+          98.5,
+          115.8
+        ],
+        "台灣中油": [
+          32.4,
+          33.9,
+          35.9,
+          31
+        ]
+      },
+      "source": "https://www.cpc.com.tw/News_Content.aspx?n=28&s=112254",
+      "historicalHtmlVintageVerified": false,
+      "isRetailGapProxyNotOfficialPreTaxCeiling": true,
+      "retrievalMethod": "official rendered HTML source reader",
+      "allFourCpcReferencePricesVerified": true,
+      "sourcePriceDataSha256": "109d8ba548ae341eecbc1fd2255ecf05c630fbb99c8a73acadecdd5c9eb36f41"
+    },
+    {
+      "id": "112274",
+      "publishedDate": "2026-05-02",
+      "availableAt": "2026-05-02T15:59:59Z",
+      "countries": {
+        "日本": [
+          33.7,
+          null,
+          35.8,
+          31.6
+        ],
+        "韓國": [
+          43,
+          52,
+          null,
+          42.9
+        ],
+        "香港": [
+          null,
+          null,
+          131,
+          148
+        ],
+        "新加坡": [
+          null,
+          85.5,
+          98.4,
+          115.7
+        ],
+        "台灣中油": [
+          32.4,
+          33.9,
+          35.9,
+          31
+        ]
+      },
+      "source": "https://www.cpc.com.tw/News_Content.aspx?n=28&s=112274",
+      "historicalHtmlVintageVerified": false,
+      "isRetailGapProxyNotOfficialPreTaxCeiling": true,
+      "retrievalMethod": "official rendered HTML source reader",
+      "allFourCpcReferencePricesVerified": true,
+      "sourcePriceDataSha256": "6d673a675c8ff2517d37b00ab1fa5737137dbd4cf10836ec440d7c86526f06b3"
+    },
+    {
+      "id": "112293",
+      "publishedDate": "2026-05-09",
+      "availableAt": "2026-05-09T15:59:59Z",
+      "countries": {
+        "日本": [
+          34.1,
+          null,
+          36.3,
+          32
+        ],
+        "韓國": [
+          43.3,
+          52.5,
+          null,
+          43.2
+        ],
+        "香港": [
+          null,
+          null,
+          130.9,
+          147.9
+        ],
+        "新加坡": [
+          null,
+          85.8,
+          98.7,
+          111
+        ],
+        "台灣中油": [
+          32.4,
+          33.9,
+          35.9,
+          31
+        ]
+      },
+      "source": "https://www.cpc.com.tw/News_Content.aspx?n=28&s=112293",
+      "historicalHtmlVintageVerified": false,
+      "isRetailGapProxyNotOfficialPreTaxCeiling": true,
+      "retrievalMethod": "official rendered HTML source reader",
+      "allFourCpcReferencePricesVerified": true,
+      "sourcePriceDataSha256": "aef4f57b1ae3315bb57b5d1058e5ab584df65a2b97800795378ee2bef9b76384"
+    },
+    {
+      "id": "112335",
+      "publishedDate": "2026-05-16",
+      "availableAt": "2026-05-16T15:59:59Z",
+      "countries": {
+        "日本": [
+          33.8,
+          null,
+          36,
+          31.7
+        ],
+        "韓國": [
+          42.6,
+          51.5,
+          null,
+          42.4
+        ],
+        "香港": [
+          null,
+          null,
+          132.1,
+          147.9
+        ],
+        "新加坡": [
+          null,
+          85.6,
+          98.4,
+          110.8
+        ],
+        "台灣中油": [
+          32.4,
+          33.9,
+          35.9,
+          31
+        ]
+      },
+      "source": "https://www.cpc.com.tw/News_Content.aspx?n=28&s=112335",
+      "historicalHtmlVintageVerified": false,
+      "isRetailGapProxyNotOfficialPreTaxCeiling": true,
+      "retrievalMethod": "official rendered HTML source reader",
+      "allFourCpcReferencePricesVerified": true,
+      "sourcePriceDataSha256": "bc38c725986cee1322a3d8fdb4f358c6f13f72af9c32f0a864e602a4ad8eab7b"
+    },
+    {
+      "id": "112360",
+      "publishedDate": "2026-05-23",
+      "availableAt": "2026-05-23T15:59:59Z",
+      "countries": {
+        "日本": [
+          33.6,
+          null,
+          35.8,
+          31.5
+        ],
+        "韓國": [
+          42.2,
+          51.1,
+          null,
+          42.1
+        ],
+        "香港": [
+          null,
+          null,
+          132.5,
+          147.1
+        ],
+        "新加坡": [
+          null,
+          85.4,
+          98.3,
+          109.1
+        ],
+        "台灣中油": [
+          32.4,
+          33.9,
+          35.9,
+          31
+        ]
+      },
+      "source": "https://www.cpc.com.tw/News_Content.aspx?n=28&s=112360",
+      "historicalHtmlVintageVerified": false,
+      "isRetailGapProxyNotOfficialPreTaxCeiling": true,
+      "retrievalMethod": "official rendered HTML source reader",
+      "allFourCpcReferencePricesVerified": true,
+      "sourcePriceDataSha256": "7652fa8e768cd8b7e0fb5a89128bbc9c26297533bb1ca1fe794e2e65e527d467"
+    },
+    {
+      "id": "112388",
+      "publishedDate": "2026-05-30",
+      "availableAt": "2026-05-30T15:59:59Z",
+      "countries": {
+        "日本": [
+          33.4,
+          null,
+          35.5,
+          31.3
+        ],
+        "韓國": [
+          41.9,
+          50.8,
+          null,
+          41.8
+        ],
+        "香港": [
+          null,
+          null,
+          130.9,
+          145.1
+        ],
+        "新加坡": [
+          null,
+          85.1,
+          97.9,
+          107.5
+        ],
+        "台灣中油": [
+          32.4,
+          33.9,
+          35.9,
+          31
+        ]
+      },
+      "source": "https://www.cpc.com.tw/News_Content.aspx?n=28&s=112388",
+      "historicalHtmlVintageVerified": false,
+      "isRetailGapProxyNotOfficialPreTaxCeiling": true,
+      "retrievalMethod": "official rendered HTML source reader",
+      "allFourCpcReferencePricesVerified": true,
+      "sourcePriceDataSha256": "879efe125b64f1461989f1cf7510303c7b88c8c2fe7a92084139f886c896c469"
+    },
+    {
+      "id": "112407",
+      "publishedDate": "2026-06-06",
+      "availableAt": "2026-06-06T15:59:59Z",
+      "countries": {
+        "日本": [
+          33.4,
+          null,
+          35.5,
+          31.3
+        ],
+        "韓國": [
+          41.4,
+          50.1,
+          null,
+          41.3
+        ],
+        "香港": [
+          null,
+          null,
+          129.3,
+          145.1
+        ],
+        "新加坡": [
+          null,
+          84.9,
+          97.7,
+          107.3
+        ],
+        "台灣中油": [
+          32.4,
+          33.9,
+          35.9,
+          31
+        ]
+      },
+      "source": "https://www.cpc.com.tw/News_Content.aspx?n=28&s=112407",
+      "historicalHtmlVintageVerified": false,
+      "isRetailGapProxyNotOfficialPreTaxCeiling": true,
+      "retrievalMethod": "official rendered HTML source reader",
+      "allFourCpcReferencePricesVerified": true,
+      "sourcePriceDataSha256": "52c503afb7e416a6f4294c060057d042e3ffffafcb49745429fcdad967a68563"
+    },
+    {
+      "id": "112418",
+      "publishedDate": "2026-06-13",
+      "availableAt": "2026-06-13T15:59:59Z",
+      "countries": {
+        "日本": [
+          33.4,
+          null,
+          35.6,
+          31.3
+        ],
+        "韓國": [
+          41.6,
+          50.4,
+          null,
+          41.5
+        ],
+        "香港": [
+          null,
+          null,
+          130.1,
+          145.2
+        ],
+        "新加坡": [
+          null,
+          85,
+          97.8,
+          106.1
+        ],
+        "台灣中油": [
+          32.4,
+          33.9,
+          35.9,
+          31
+        ]
+      },
+      "source": "https://www.cpc.com.tw/News_Content.aspx?n=28&s=112418",
+      "historicalHtmlVintageVerified": false,
+      "isRetailGapProxyNotOfficialPreTaxCeiling": true,
+      "retrievalMethod": "official rendered HTML source reader",
+      "allFourCpcReferencePricesVerified": true,
+      "sourcePriceDataSha256": "1c985a9095ad5f794855e3fbd0f943d01354ee9b3f6186ba6e3d91565d19112f"
+    },
+    {
+      "id": "112453",
+      "publishedDate": "2026-06-20",
+      "availableAt": "2026-06-20T15:59:59Z",
+      "countries": {
+        "日本": [
+          33.4,
+          null,
+          35.5,
+          31.3
+        ],
+        "韓國": [
+          41.8,
+          50.5,
+          null,
+          41.7
+        ],
+        "香港": [
+          null,
+          null,
+          128.7,
+          142.5
+        ],
+        "新加坡": [
+          null,
+          84,
+          96.8,
+          103.7
+        ],
+        "台灣中油": [
+          31.4,
+          32.9,
+          34.9,
+          30.3
+        ]
+      },
+      "source": "https://www.cpc.com.tw/News_Content.aspx?n=28&s=112453",
+      "historicalHtmlVintageVerified": false,
+      "isRetailGapProxyNotOfficialPreTaxCeiling": true,
+      "retrievalMethod": "official rendered HTML source reader",
+      "allFourCpcReferencePricesVerified": true,
+      "sourcePriceDataSha256": "8baaa460d9ed61308258c20e6cd9e4d5fc584adbaf55ef17cb0919f961ebcadb"
+    },
+    {
+      "id": "112465",
+      "publishedDate": "2026-06-27",
+      "availableAt": "2026-06-27T15:59:59Z",
+      "countries": {
+        "日本": [
+          33.3,
+          null,
+          35.5,
+          31.2
+        ],
+        "韓國": [
+          41.2,
+          49.9,
+          null,
+          41
+        ],
+        "香港": [
+          null,
+          null,
+          128.9,
+          140
+        ],
+        "新加坡": [
+          null,
+          83.8,
+          96.5,
+          103.4
+        ],
+        "台灣中油": [
+          30.4,
+          31.9,
+          33.9,
+          29.5
+        ]
+      },
+      "source": "https://www.cpc.com.tw/News_Content.aspx?n=28&s=112465",
+      "historicalHtmlVintageVerified": false,
+      "isRetailGapProxyNotOfficialPreTaxCeiling": true,
+      "retrievalMethod": "official rendered HTML source reader",
+      "allFourCpcReferencePricesVerified": true,
+      "sourcePriceDataSha256": "304c2f02a492331b7f72321085a8f29b797d60d2242f74929e3057723a21a183"
+    },
+    {
+      "id": "112492",
+      "publishedDate": "2026-07-04",
+      "availableAt": "2026-07-04T15:59:59Z",
+      "countries": {
+        "日本": [
+          33.5,
+          null,
+          35.6,
+          31.4
+        ],
+        "韓國": [
+          39.4,
+          47.7,
+          null,
+          39.1
+        ],
+        "香港": [
+          null,
+          null,
+          129.4,
+          137.1
+        ],
+        "新加坡": [
+          null,
+          83.1,
+          95.9,
+          99.8
+        ],
+        "台灣中油": [
+          29.8,
+          31.3,
+          33.3,
+          28.8
+        ]
+      },
+      "source": "https://www.cpc.com.tw/News_Content.aspx?n=28&s=112492",
+      "historicalHtmlVintageVerified": false,
+      "isRetailGapProxyNotOfficialPreTaxCeiling": true,
+      "retrievalMethod": "official rendered HTML source reader",
+      "allFourCpcReferencePricesVerified": true,
+      "sourcePriceDataSha256": "d94b5264d509c246ac0d2eb7b2812303327bfe090fb9015fbf9c5623b8bf6b96"
+    },
+    {
+      "id": "112506",
+      "publishedDate": "2026-07-11",
+      "availableAt": "2026-07-11T15:59:59Z",
+      "countries": {
+        "日本": [
+          33.5,
+          null,
+          35.6,
+          31.4
+        ],
+        "韓國": [
+          39.4,
+          47.7,
+          null,
+          39.1
+        ],
+        "香港": [
+          null,
+          null,
+          129.4,
+          137.1
+        ],
+        "新加坡": [
+          null,
+          83.1,
+          95.9,
+          99.8
+        ],
+        "台灣中油": [
+          29.8,
+          31.3,
+          33.3,
+          28.8
+        ]
+      },
+      "source": "https://www.cpc.com.tw/News_Content.aspx?n=28&s=112506",
+      "historicalHtmlVintageVerified": false,
+      "isRetailGapProxyNotOfficialPreTaxCeiling": true,
+      "retrievalMethod": "official rendered HTML source reader",
+      "allFourCpcReferencePricesVerified": true,
+      "sourcePriceDataSha256": "fd3cc6b022fefcf0a4b88ea14b878929342d36b447769d30b58787b7ab5222e7"
+    },
+    {
+      "id": "112541",
+      "publishedDate": "2026-07-18",
+      "availableAt": "2026-07-18T15:59:59Z",
+      "countries": {
+        "日本": [
+          33.7,
+          null,
+          35.9,
+          31.6
+        ],
+        "韓國": [
+          40.5,
+          49.1,
+          null,
+          40.2
+        ],
+        "香港": [
+          null,
+          null,
+          131.7,
+          142.7
+        ],
+        "新加坡": [
+          null,
+          84.1,
+          97.1,
+          98.5
+        ],
+        "台灣中油": [
+          29.8,
+          31.3,
+          33.3,
+          28.8
+        ]
+      },
+      "source": "https://www.cpc.com.tw/News_Content.aspx?n=28&s=112541",
+      "historicalHtmlVintageVerified": false,
+      "isRetailGapProxyNotOfficialPreTaxCeiling": true,
+      "retrievalMethod": "official rendered HTML source reader",
+      "allFourCpcReferencePricesVerified": true,
+      "sourcePriceDataSha256": "90d632ec227e3f2bf28a123f6f2265ce6c6b278c7af25b0ea2bc51205fb230cd"
+    },
+    {
+      "id": "112549",
+      "publishedDate": "2026-07-25",
+      "availableAt": "2026-07-25T15:59:59Z",
+      "countries": {
+        "日本": [
+          33.7,
+          null,
+          35.8,
+          31.6
+        ],
+        "韓國": [
+          41,
+          49.6,
+          null,
+          40.7
+        ],
+        "香港": [
+          null,
+          null,
+          134.7,
+          148.9
+        ],
+        "新加坡": [
+          null,
+          84.4,
+          97.4,
+          98.9
+        ],
+        "台灣中油": [
+          30.5,
+          32,
+          34,
+          29.3
+        ]
+      },
+      "source": "https://www.cpc.com.tw/News_Content.aspx?n=28&s=112549",
+      "historicalHtmlVintageVerified": false,
+      "isRetailGapProxyNotOfficialPreTaxCeiling": true,
+      "retrievalMethod": "official rendered HTML source reader",
+      "allFourCpcReferencePricesVerified": true,
+      "sourcePriceDataSha256": "1a73a2e1adebeb68dd0645f56fc0c5468980cc61e2d088e5f10d7856bf3f1db8"
+    },
+    {
+      "id": "112565",
+      "publishedDate": "2026-08-01",
+      "availableAt": "2026-08-01T15:59:59Z",
+      "countries": {
+        "日本": [
+          33.8,
+          null,
+          35.9,
+          31.6
+        ],
+        "韓國": [
+          41.7,
+          50.4,
+          null,
+          41.3
+        ],
+        "香港": [
+          null,
+          null,
+          134.8,
+          150.7
+        ],
+        "新加坡": [
+          null,
+          84.6,
+          97.6,
+          99.1
+        ],
+        "台灣中油": [
+          30.5,
+          32,
+          34,
+          29.3
+        ]
+      },
+      "source": "https://www.cpc.com.tw/News_Content.aspx?n=28&s=112565",
+      "historicalHtmlVintageVerified": false,
+      "isRetailGapProxyNotOfficialPreTaxCeiling": true,
+      "retrievalMethod": "official rendered HTML source reader",
+      "allFourCpcReferencePricesVerified": true,
+      "sourcePriceDataSha256": "6e9064563a2786e0289e64dfcd65b2d80a0a4147a1605e6f5be69058a449a829"
+    },
+    {
+      "id": "112577",
+      "publishedDate": "2026-08-08",
+      "availableAt": "2026-08-08T15:59:59Z",
+      "countries": {
+        "日本": [
+          34.9,
+          null,
+          37.1,
+          32.7
+        ],
+        "韓國": [
+          42.3,
+          51.2,
+          null,
+          41.9
+        ],
+        "香港": [
+          null,
+          null,
+          134.7,
+          149
+        ],
+        "新加坡": [
+          null,
+          85,
+          98.1,
+          99.7
+        ],
+        "台灣中油": [
+          30.5,
+          32,
+          34,
+          29.3
+        ]
+      },
+      "source": "https://www.cpc.com.tw/News_Content.aspx?n=28&s=112577",
+      "historicalHtmlVintageVerified": false,
+      "isRetailGapProxyNotOfficialPreTaxCeiling": true,
+      "retrievalMethod": "official rendered HTML source reader",
+      "allFourCpcReferencePricesVerified": true,
+      "sourcePriceDataSha256": "f4758fadcc7be81692ca59161b5ecd1e47eccf31a1334036a916a5c1a3f8c5f6"
+    },
+    {
+      "id": "112588",
+      "publishedDate": "2026-08-15",
+      "availableAt": "2026-08-15T15:59:59Z",
+      "countries": {
+        "日本": [
+          34.4,
+          null,
+          36.6,
+          32.3
+        ],
+        "韓國": [
+          42.3,
+          51.2,
+          null,
+          41.9
+        ],
+        "香港": [
+          null,
+          null,
+          134,
+          149.9
+        ],
+        "新加坡": [
+          null,
+          84.8,
+          97.8,
+          99.3
+        ],
+        "台灣中油": [
+          30.5,
+          32,
+          34,
+          29.3
+        ]
+      },
+      "source": "https://www.cpc.com.tw/News_Content.aspx?n=28&s=112588",
+      "historicalHtmlVintageVerified": false,
+      "isRetailGapProxyNotOfficialPreTaxCeiling": true,
+      "retrievalMethod": "official rendered HTML source reader",
+      "allFourCpcReferencePricesVerified": true,
+      "sourcePriceDataSha256": "88df747671ffe2c4750b0958caadad225da3d464e3e7b29a143ae99861b59956"
+    },
+    {
+      "id": "112718",
+      "publishedDate": "2026-08-22",
+      "availableAt": "2026-08-22T15:59:59Z",
+      "countries": {
+        "日本": [
+          34.1,
+          null,
+          36.3,
+          32
+        ],
+        "韓國": [
+          42.5,
+          51.4,
+          null,
+          42.1
+        ],
+        "香港": [
+          null,
+          null,
+          132.9,
+          149.4
+        ],
+        "新加坡": [
+          null,
+          84.4,
+          97.4,
+          98.9
+        ],
+        "台灣中油": [
+          30.5,
+          32,
+          34,
+          29.3
+        ]
+      },
+      "source": "https://www.cpc.com.tw/News_Content.aspx?n=28&s=112718",
+      "historicalHtmlVintageVerified": false,
+      "isRetailGapProxyNotOfficialPreTaxCeiling": true,
+      "retrievalMethod": "official rendered HTML source reader",
+      "allFourCpcReferencePricesVerified": true,
+      "sourcePriceDataSha256": "d1f77da8053bea1283603d57eed5de9b5186eca20073cfc59805390a83f8b6ff"
+    },
+    {
+      "id": "112745",
+      "publishedDate": "2026-08-29",
+      "availableAt": "2026-08-29T15:59:59Z",
+      "countries": {
+        "日本": [
+          33.9,
+          null,
+          36,
+          31.8
+        ],
+        "韓國": [
+          42.8,
+          51.8,
+          null,
+          42.4
+        ],
+        "香港": [
+          null,
+          null,
+          132.4,
+          148.9
+        ],
+        "新加坡": [
+          null,
+          84.3,
+          97.3,
+          98.8
+        ],
+        "台灣中油": [
+          30.5,
+          32,
+          34,
+          29.3
+        ]
+      },
+      "source": "https://www.cpc.com.tw/News_Content.aspx?n=28&s=112745",
+      "historicalHtmlVintageVerified": false,
+      "isRetailGapProxyNotOfficialPreTaxCeiling": true,
+      "retrievalMethod": "official rendered HTML source reader",
+      "allFourCpcReferencePricesVerified": true,
+      "sourcePriceDataSha256": "a61e5ae5aaea0c8e24904ef40adb56806d62ab0e2784ee11a6eafce1d4813f5d"
+    },
+    {
+      "id": "112788",
+      "publishedDate": "2026-09-05",
+      "availableAt": "2026-09-05T15:59:59Z",
+      "countries": {
+        "日本": [
+          34,
+          null,
+          36.1,
+          31.9
+        ],
+        "韓國": [
+          43.2,
+          52.3,
+          null,
+          42.8
+        ],
+        "香港": [
+          null,
+          null,
+          132,
+          147.6
+        ],
+        "新加坡": [
+          null,
+          84,
+          97,
+          98.5
+        ],
+        "台灣中油": [
+          30.5,
+          32,
+          34,
+          29.3
+        ]
+      },
+      "source": "https://www.cpc.com.tw/News_Content.aspx?n=28&s=112788",
+      "historicalHtmlVintageVerified": false,
+      "isRetailGapProxyNotOfficialPreTaxCeiling": true,
+      "retrievalMethod": "official rendered HTML source reader",
+      "allFourCpcReferencePricesVerified": true,
+      "sourcePriceDataSha256": "4bf9405e24c4d2dcc849417c1bc76796e33add02e68092d2b506ee5ae78adc78"
+    },
+    {
+      "id": "112832",
+      "publishedDate": "2026-09-12",
+      "availableAt": "2026-09-12T15:59:59Z",
+      "countries": {
+        "日本": [
+          34.8,
+          null,
+          37.1,
+          32.7
+        ],
+        "韓國": [
+          43.7,
+          52.9,
+          null,
+          43.3
+        ],
+        "香港": [
+          null,
+          null,
+          134.5,
+          150.2
+        ],
+        "新加坡": [
+          null,
+          84,
+          97,
+          98.5
+        ],
+        "台灣中油": [
+          31.2,
+          32.7,
+          34.7,
+          29.9
+        ]
+      },
+      "source": "https://www.cpc.com.tw/News_Content.aspx?n=28&s=112832",
+      "historicalHtmlVintageVerified": false,
+      "isRetailGapProxyNotOfficialPreTaxCeiling": true,
+      "retrievalMethod": "official rendered HTML source reader",
+      "allFourCpcReferencePricesVerified": true,
+      "sourcePriceDataSha256": "82b8ce7efce57ae41a7eac758c8bcf4111582fe5850acc7a87ebc9491e866c5a"
+    },
+    {
+      "id": "112852",
+      "publishedDate": "2026-09-19",
+      "availableAt": "2026-09-19T15:59:59Z",
+      "countries": {
+        "日本": [
+          34.8,
+          null,
+          37,
+          32.6
+        ],
+        "韓國": [
+          43.2,
+          52.3,
+          null,
+          42.9
+        ],
+        "香港": [
+          null,
+          null,
+          140.4,
+          155.9
+        ],
+        "新加坡": [
+          null,
+          87.2,
+          100.2,
+          101.7
+        ],
+        "台灣中油": [
+          31.2,
+          32.7,
+          34.7,
+          29.9
+        ]
+      },
+      "source": "https://www.cpc.com.tw/News_Content.aspx?n=28&s=112852",
+      "historicalHtmlVintageVerified": false,
+      "isRetailGapProxyNotOfficialPreTaxCeiling": true,
+      "retrievalMethod": "official rendered HTML source reader",
+      "allFourCpcReferencePricesVerified": true,
+      "sourcePriceDataSha256": "1d4912a26a10b67c105685ece0cc634f512b70693c014bdc3aad9a9d07f0c8fe"
+    },
+    {
+      "id": "112870",
+      "publishedDate": "2026-09-26",
+      "availableAt": "2026-09-26T15:59:59Z",
+      "countries": {
+        "日本": [
+          34.2,
+          null,
+          36.4,
+          32
+        ],
+        "韓國": [
+          43.1,
+          52.1,
+          null,
+          42.7
+        ],
+        "香港": [
+          null,
+          null,
+          140.1,
+          154.3
+        ],
+        "新加坡": [
+          null,
+          86.7,
+          99.6,
+          101.1
+        ],
+        "台灣中油": [
+          31.2,
+          32.7,
+          34.7,
+          29.9
+        ]
+      },
+      "source": "https://www.cpc.com.tw/News_Content.aspx?n=28&s=112870",
+      "historicalHtmlVintageVerified": false,
+      "isRetailGapProxyNotOfficialPreTaxCeiling": true,
+      "retrievalMethod": "official rendered HTML source reader",
+      "allFourCpcReferencePricesVerified": true,
+      "sourcePriceDataSha256": "84bf717dce64547a2209e6e8760f726e0935b73945ff217029858705f242019c"
+    },
+    {
+      "id": "112882",
+      "publishedDate": "2026-10-03",
+      "availableAt": "2026-10-03T15:59:59Z",
+      "countries": {
+        "日本": [
+          34.4,
+          null,
+          36.6,
+          32.3
+        ],
+        "韓國": [
+          43.6,
+          52.8,
+          null,
+          43.3
+        ],
+        "香港": [
+          null,
+          null,
+          140.5,
+          154
+        ],
+        "新加坡": [
+          null,
+          88.2,
+          101.1,
+          101.4
+        ],
+        "台灣中油": [
+          31.2,
+          32.7,
+          34.7,
+          29.9
+        ]
+      },
+      "source": "https://www.cpc.com.tw/News_Content.aspx?n=28&s=112882",
+      "historicalHtmlVintageVerified": false,
+      "isRetailGapProxyNotOfficialPreTaxCeiling": true,
+      "retrievalMethod": "official rendered HTML source reader",
+      "allFourCpcReferencePricesVerified": true,
+      "sourcePriceDataSha256": "ad83e785e600b56b10a4d38f7967fe03dffefbdc0699959ffbd721cb16de7867"
+    },
+    {
+      "id": "112894",
+      "publishedDate": "2026-10-10",
+      "availableAt": "2026-10-10T15:59:59Z",
+      "countries": {
+        "日本": [
+          34.3,
+          null,
+          36.4,
+          32.1
+        ],
+        "韓國": [
+          44,
+          53.3,
+          null,
+          43.7
+        ],
+        "香港": [
+          null,
+          null,
+          140.3,
+          153.3
+        ],
+        "新加坡": [
+          null,
+          88,
+          100.9,
+          101.1
+        ],
+        "台灣中油": [
+          31.2,
+          32.7,
+          34.7,
+          29.9
+        ]
+      },
+      "source": "https://www.cpc.com.tw/News_Content.aspx?n=28&s=112894",
+      "historicalHtmlVintageVerified": false,
+      "isRetailGapProxyNotOfficialPreTaxCeiling": true,
+      "retrievalMethod": "official rendered HTML source reader",
+      "allFourCpcReferencePricesVerified": true,
+      "sourcePriceDataSha256": "067198108e55058bf1068cd296280ff4b07e11584c396687bf52fc6123ef10b9"
+    },
+    {
+      "id": "112938",
+      "publishedDate": "2026-10-17",
+      "availableAt": "2026-10-17T15:59:59Z",
+      "countries": {
+        "日本": [
+          34.6,
+          null,
+          36.8,
+          32.4
+        ],
+        "韓國": [
+          44.6,
+          54,
+          null,
+          44.3
+        ],
+        "香港": [
+          null,
+          null,
+          142.2,
+          154.9
+        ],
+        "新加坡": [
+          null,
+          89.6,
+          102.6,
+          102.1
+        ],
+        "台灣中油": [
+          31.2,
+          32.7,
+          34.7,
+          29.9
+        ]
+      },
+      "source": "https://www.cpc.com.tw/News_Content.aspx?n=28&s=112938",
+      "historicalHtmlVintageVerified": false,
+      "isRetailGapProxyNotOfficialPreTaxCeiling": true,
+      "retrievalMethod": "official rendered HTML source reader",
+      "allFourCpcReferencePricesVerified": true,
+      "sourcePriceDataSha256": "8560f4edf3ca95fd61da98a0b5aaebb58c5ee7340601b20187d769e7906a2a72"
+    },
+    {
+      "id": "112945",
+      "publishedDate": "2026-10-24",
+      "availableAt": "2026-10-24T15:59:59Z",
+      "countries": {
+        "日本": [
+          35.1,
+          null,
+          37.3,
+          32.9
+        ],
+        "韓國": [
+          45.5,
+          55.1,
+          null,
+          45.2
+        ],
+        "香港": [
+          null,
+          null,
+          143.9,
+          158.4
+        ],
+        "新加坡": [
+          null,
+          91.6,
+          104.8,
+          103.5
+        ],
+        "台灣中油": [
+          31.2,
+          32.7,
+          34.7,
+          29.9
+        ]
+      },
+      "source": "https://www.cpc.com.tw/News_Content.aspx?n=28&s=112945",
+      "historicalHtmlVintageVerified": false,
+      "isRetailGapProxyNotOfficialPreTaxCeiling": true,
+      "retrievalMethod": "official rendered HTML source reader",
+      "allFourCpcReferencePricesVerified": true,
+      "sourcePriceDataSha256": "4414cada6edded67cefb8e500741b72c999a02887f2993278cf1a42c3bc09780"
+    },
+    {
+      "id": "112959",
+      "publishedDate": "2026-10-31",
+      "availableAt": "2026-10-31T15:59:59Z",
+      "countries": {
+        "日本": [
+          35,
+          null,
+          37.3,
+          32.9
+        ],
+        "韓國": [
+          45.2,
+          54.8,
+          null,
+          44.9
+        ],
+        "香港": [
+          null,
+          null,
+          143.7,
+          157.4
+        ],
+        "新加坡": [
+          null,
+          92,
+          105.2,
+          103.2
+        ],
+        "台灣中油": [
+          31.2,
+          32.7,
+          34.7,
+          29.9
+        ]
+      },
+      "source": "https://www.cpc.com.tw/News_Content.aspx?n=28&s=112959",
+      "historicalHtmlVintageVerified": false,
+      "isRetailGapProxyNotOfficialPreTaxCeiling": true,
+      "retrievalMethod": "official rendered HTML source reader",
+      "allFourCpcReferencePricesVerified": true,
+      "sourcePriceDataSha256": "1c65771d0d4ed260941c61d0bdded91661e748ee269a1fbc084ab543b72da3f7"
+    }
+  ],
+  "errors": [
+    {
+      "id": "112065",
+      "date": "2026-03-01",
+      "error": "Publication date missing; no Japanese table match"
+    },
+    {
+      "id": "112080",
+      "date": "2026-03-07",
+      "error": "Publication date missing; no Japanese table match"
+    },
+    {
+      "id": "112092",
+      "date": "2026-03-14",
+      "error": "Publication date missing; no Japanese table match"
+    },
+    {
+      "id": "112111",
+      "date": "2026-03-21",
+      "error": "Publication date missing; no Japanese table match"
+    }
+  ],
+  "earlier2019To2025NeighborTablesRecovered": false
+}

@@ -1,0 +1,117 @@
+name: OilCast weekly stability and dated source research
+'on':
+  push:
+    branches: ['fix/four-fuel-mae-v6-20261103', 'fix/four-fuel-mae-v7-20261103']
+    paths: ['research/**', 'data/research/**', '.github/workflows/stability-context.yml']
+  workflow_dispatch:
+    inputs:
+      refresh_sources:
+        description: 'Collect new raw risk-source artifacts separately; accuracy always uses the versioned frozen context'
+        type: boolean
+        required: false
+        default: false
+permissions:
+  contents: read
+  actions: read
+jobs:
+  source-context:
+    if: github.event_name == 'workflow_dispatch' && inputs.refresh_sources
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - name: Restore the last atomic source checkpoint
+        uses: actions/cache/restore@v4
+        with:
+          path: output/context
+          key: stability-context-v2-${{ matrix.shard }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: stability-context-v2-${{ matrix.shard }}-
+      - name: Collect a bounded independent first-seen source shard
+        run: >-
+          timeout --signal=TERM 19m python3 research/collect_stability_context.py
+          --policy data/research/cpc-policy-20261103.json --output output/context
+          --friday-start 2013-04-05 --shard ${{ matrix.shard }} --shards 4
+          --workers 4 --max-seconds 1000 --resume --skip-neighbors
+      - name: Keep checkpoints available after a partial acquisition
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: output/context
+          key: stability-context-v2-${{ matrix.shard }}-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Preserve numeric aggregates, provenance, and source failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stability-context-shard-${{ github.run_id }}-${{ matrix.shard }}
+          path: output/context/
+          if-no-files-found: error
+          retention-days: 45
+          overwrite: true
+  merge-context:
+    needs: source-context
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: stability-context-shard-${{ github.run_id }}-*
+          path: output/shards
+      - name: Require completed shards and preserve missing neighbor coverage
+        run: python3 research/collect_stability_context.py --merge output/shards/*/context.json --output output/merged
+      - uses: actions/upload-artifact@v4
+        with:
+          name: oilcast-stability-context-${{ github.run_id }}
+          path: output/merged/
+          retention-days: 45
+  weekly-stability:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [v6, v7]
+    env:
+      OMP_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - name: Extract the versioned numeric inputs with original artifact derivation hashes
+        run: |
+          mkdir -p output/frozen
+          tar -xJf data/research/stability-inputs-${{ matrix.variant }}-20261103.tar.xz -C output/frozen
+      - name: Refit every forecast week and evaluate each fuel across eras
+        run: |
+          python3 -m pip install --no-cache-dir -r research/requirements-mae.txt
+          python3 -m unittest discover -s research/mae_tests -v
+          python3 research/weekly_stability.py --inputs output/frozen \
+            --variant ${{ matrix.variant }} --context data/research/stability-context-20261103.json.gz \
+            --output output/weekly-stability --workers 4
+      - name: Preserve failed accuracy evidence as well as successful results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: oilcast-weekly-stability-${{ matrix.variant }}-${{ github.run_id }}
+          path: output/weekly-stability/
+          if-no-files-found: error
+          retention-days: 45
+      - name: Require all four fuels to beat unchanged-price MAE
+        run: |
+          python3 - <<'PY'
+          import json
+          report=json.load(open('output/weekly-stability/report.json'))
+          if not report['allFourHistoricalAuditGatesPassed']:
+              raise SystemExit('STABILITY_GATE_NOT_MET: each fuel must pass cross-era selection and improve audit MAE by more than 0.01 TWD/L. No promotion.')
+          PY

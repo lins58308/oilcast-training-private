@@ -94,7 +94,15 @@ public final class MultiLearner {
             double[] row=a[c];a[c]=a[p];a[p]=row;double v=b[c];b[c]=b[p];b[p]=v;
             if(Math.abs(a[c][c])<1e-12)throw new IllegalArgumentException("多來源模型矩陣不可解");v=a[c][c];for(int k=c;k<P;k++)a[c][k]/=v;b[c]/=v;
             for(int i=0;i<P;i++)if(i!=c){v=a[i][c];for(int k=c;k<P;k++)a[i][k]-=v*a[c][k];b[i]-=v*b[c];}
-        }m.weights=b;for(int j=0;j<P;j++)m.intercept-=b[j]*zmean[j];d.fits.put(key,m);return m;
+        }m.weights=b;for(int j=0;j<P;j++)m.intercept-=b[j]*zmean[j];
+        if(family==4){
+            // Refine against the reported absolute-error objective. The
+            // previous "robust" candidate clipped X but still minimized MSE.
+            // All labeled weeks and their bounded recency base weights remain.
+            double[] robust=AbsoluteLoss.refine(x,y,sampleWeights,lambda,m.intercept,m.weights);
+            m.intercept=robust[0];System.arraycopy(robust,1,m.weights,0,P);
+        }
+        d.fits.put(key,m);return m;
     }
     public static Learner.Score evaluate(Data d,int f,int family,double lambda,int start,int end)throws Exception{
         return evaluate(d,f,family,lambda,start,end,ProgressListener.NONE,new int[]{0});

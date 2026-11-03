@@ -1,0 +1,181 @@
+name: OilCast four-fuel frozen MAE evidence (no publishing)
+
+'on':
+  push:
+    branches:
+      - 'fix/four-fuel-mae-v6-20261103'
+      - 'fix/four-fuel-mae-v7-20261103'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  freeze-inputs:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[freeze-mae-inputs]')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - variant: v6
+            source: 993ae6e4b593d929f6522e2706bb7e675b6004ca
+            checkpoint: training-checkpoint
+          - variant: v7
+            source: 2b7fac70aced13e65df157a4882ad3de9a87fb02
+            checkpoint: training-checkpoint-v7
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - name: Recover each version's immutable source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ matrix.source }}
+          path: source
+          persist-credentials: false
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Export all known weekly examples at the same cutoff
+        env:
+          VARIANT: ${{ matrix.variant }}
+          SOURCE_SHA: ${{ matrix.source }}
+          CHECKPOINT_TAG: ${{ matrix.checkpoint }}
+        run: |
+          set -euo pipefail
+          mkdir -p output/mae-inputs
+          (cd source && python3 run_training.py --as-of 2026-09-13T13:00:00Z --output output/demo)
+          curl --fail --location --retry 3 --silent --show-error --max-time 120 \
+            "https://github.com/lins58308/oilcast-models/releases/download/$CHECKPOINT_TAG/checkpoint.json" \
+            --output output/mae-inputs/checkpoint.json
+          java -cp source/build/classes:source/build/json.jar tw.oilcast.core.SemanticResearchDataset \
+            source output/mae-inputs/checkpoint.json output/mae-inputs/dataset.json '2026-11-03T02:00:00Z'
+          curl --fail --location --retry 3 --silent --show-error --max-time 120 \
+            'https://www2.moeaea.gov.tw/oil111/csv/GlobalOilOpenData.csv' \
+            --output output/mae-inputs/moea-daily.csv
+          curl --fail --location --retry 3 --silent --show-error --max-time 120 \
+            'https://fred.stlouisfed.org/graph/fredgraph.csv?id=POILDUBUSDM&cosd=1992-01-01' \
+            --output output/mae-inputs/dubai-monthly.csv
+          cp data/research/cpc-policy-20261103.json output/mae-inputs/policy.json
+          cp source/build/json.jar output/mae-inputs/json.jar
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib
+          root=pathlib.Path('output/mae-inputs')
+          dataset=json.loads((root/'dataset.json').read_text())
+          assert len(dataset['examples']) >= 1300
+          manifest={
+              'schema':1,'variant':os.environ['VARIANT'],
+              'sourceCommit':os.environ['SOURCE_SHA'],
+              'asOf':'2026-11-03T02:00:00Z',
+              'checkpointTag':os.environ['CHECKPOINT_TAG'],
+              'weeklyExamples':len(dataset['examples']),
+              'historicalAuditPreviouslyInspected':True,
+              'automaticPromotionApproved':False,
+              'sha256':{p.name:hashlib.sha256(p.read_bytes()).hexdigest()
+                        for p in sorted(root.iterdir()) if p.is_file()}}
+          (root/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
+          print(json.dumps(manifest,indent=2))
+          PY
+      - name: Preserve reproducible inputs without touching release channels
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: four-fuel-mae-inputs-${{ matrix.variant }}-${{ github.run_id }}
+          path: output/mae-inputs/
+          if-no-files-found: error
+          retention-days: 45
+  candidate-audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      OMP_NUM_THREADS: '2'
+      OPENBLAS_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - name: Recover the exact original frozen input artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF_NAME" == *v7* ]]; then
+            VARIANT=v7; ORIGINAL=2b7fac70aced13e65df157a4882ad3de9a87fb02
+          else
+            VARIANT=v6; ORIGINAL=993ae6e4b593d929f6522e2706bb7e675b6004ca
+          fi
+          echo "VARIANT=$VARIANT" >> "$GITHUB_ENV"
+          echo "ORIGINAL=$ORIGINAL" >> "$GITHUB_ENV"
+          gh run download 41573170767 --repo lins58308/oilcast-training-private \
+            --name "four-fuel-mae-inputs-$VARIANT-41573170767" --dir output/frozen
+      - name: Fit registered MAE learners and audit each fuel independently
+        run: |
+          set -euo pipefail
+          python3 -m pip install --no-cache-dir -r research/requirements-mae.txt
+          python3 -m unittest discover -s research/mae_tests -v
+          python3 research/mae_walk_forward.py --inputs output/frozen \
+            --variant "$VARIANT" --output output/mae-trial
+          python3 - <<'PY'
+          import pathlib, shutil
+          pathlib.Path('build').mkdir(exist_ok=True)
+          shutil.copyfile('output/frozen/json.jar','build/json.jar')
+          import run_training
+          run_training.compile_sources()
+          PY
+          javac --release 11 -cp build/classes:build/json.jar -d build/classes research/SignedCoreMaeAudit.java
+          java -Xmx2g -cp build/classes:build/json.jar SignedCoreMaeAudit \
+            output/frozen/checkpoint.json output/signed-proposed.json 2026-11-03T02:00:00Z
+      - name: Compare relative-loss baseline challengers across continuous history
+        run: |
+          python3 research/baseline_challenger.py --inputs output/frozen \
+            --variant "$VARIANT" --output output/baseline-challenger --continuous-replay
+      - name: Recover original unmodified trainer for a paired comparison
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ env.ORIGINAL }}
+          path: baseline-source
+          persist-credentials: false
+      - name: Compare original signed-core heads on identical frozen inputs
+        run: |
+          set -euo pipefail
+          mkdir -p baseline-source/build
+          cp output/frozen/json.jar baseline-source/build/json.jar
+          (cd baseline-source && python3 -c 'import run_training; run_training.compile_sources()')
+          javac --release 11 -cp baseline-source/build/classes:baseline-source/build/json.jar \
+            -d baseline-source/build/classes research/SignedCoreMaeAudit.java
+          java -Xmx2g -cp baseline-source/build/classes:baseline-source/build/json.jar SignedCoreMaeAudit \
+            output/frozen/checkpoint.json output/signed-original.json 2026-11-03T02:00:00Z
+          python3 research/compare_mae_audits.py --original output/signed-original.json \
+            --proposed output/signed-proposed.json --variant "$VARIANT" --output output/signed-comparison.json
+      - name: Preserve evidence even when an accuracy gate fails
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: four-fuel-mae-results-${{ github.run_id }}
+          path: |
+            output/mae-trial/
+            output/baseline-challenger/
+            output/signed-*.json
+            output/frozen/manifest.json
+          if-no-files-found: error
+          retention-days: 45
+      - name: Enforce improvement for all four fuels
+        run: |
+          python3 - <<'PY'
+          import json
+          report=json.load(open('output/mae-trial/report.json'))
+          challenger=json.load(open('output/baseline-challenger/report.json'))
+          if not (report['allFourHistoricalAuditGatesPassed'] or challenger['allFourHistoricalAuditGatesPassed']):
+              raise SystemExit('ACCURACY_GATE_NOT_MET: all four selected fuel heads must beat unchanged-price MAE by more than 0.01 TWD/L; see preserved per-fuel reasons. No promotion.')
+          PY
