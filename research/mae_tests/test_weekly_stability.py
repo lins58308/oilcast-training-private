@@ -11,7 +11,8 @@ import numpy as np
 sys.path.insert(0,str(pathlib.Path(__file__).resolve().parents[1]))
 from collect_stability_context import aggregate_gdelt,cpc_neighbors
 from stability_features import carry_features,auxiliary_features
-from weekly_stability import Candidate,one_origin,train_choices
+from weekly_stability import Candidate,Forecasts,one_origin,train_choices
+from zero_aware import mixture_median
 
 
 class NewContextTest(unittest.TestCase):
@@ -56,12 +57,27 @@ class NewContextTest(unittest.TestCase):
 
 
 class WeeklyRefitTest(unittest.TestCase):
+    def test_parallel_refits_match_sequential_forecasts(self):
+        rng=np.random.default_rng(4);x=rng.normal(size=(140,6));y=rng.normal(size=(140,2))*.2
+        data={h:{'base':x,'carry':x,'policyCovered':np.zeros(140,dtype=bool)} for h in range(2)}
+        spec=Candidate('test','robust',False)
+        with Forecasts(data,y,1) as sequential:expected=sequential.predict(spec,range(120,125))
+        with Forecasts(data,y,2) as parallel:actual=parallel.predict(spec,range(120,125))
+        np.testing.assert_allclose(expected,actual,atol=1e-12,rtol=0)
+
+    def test_mixture_preserves_zero_mass_instead_of_predicting_a_mean_move(self):
+        y=np.array([-1.,0.,.1,1.,3.]);weights=np.ones(5)
+        self.assertEqual(mixture_median(y,weights,[.1,.7,.2]),0.)
+        self.assertEqual(mixture_median(y,weights,[.05,.4,.55]),.1)
+        self.assertEqual(mixture_median(y,weights,[.6,.3,.1]),-1.)
+
     def test_future_labels_do_not_change_forecast(self):
         rng=np.random.default_rng(2);x=rng.normal(size=(140,6));y=rng.normal(size=(140,2))*.2
         data={h:{'base':x,'carry':x,'enriched':x,'policyCovered':np.zeros(140,dtype=bool)} for h in range(2)}
-        spec=Candidate('test','robust',False)
-        expected=one_origin(data,y,120,spec);y[120:]=100
-        np.testing.assert_array_equal(expected,one_origin(data,y,120,spec))
+        for learner in ('robust','mixture'):
+            spec=Candidate('test',learner,False)
+            expected=one_origin(data,y,120,spec);y[120:]=100
+            np.testing.assert_array_equal(expected,one_origin(data,y,120,spec))
 
     def test_average_win_cannot_hide_diesel_regression(self):
         base={f:{'mae':.3,'directionAccuracy':.5,'falseMoveRate':0.} for f in ('92','95','98','diesel')}

@@ -30,7 +30,7 @@ jobs:
           timeout --signal=TERM 19m python3 research/collect_stability_context.py
           --policy data/research/cpc-policy-20261103.json --output output/context
           --friday-start 2013-04-05 --shard ${{ matrix.shard }} --shards 4
-          --workers 4 --max-seconds 1000 --resume
+          --workers 4 --max-seconds 1000 --resume --skip-neighbors
       - name: Keep checkpoints available after a partial acquisition
         if: always()
         uses: actions/cache/save@v4
@@ -96,7 +96,7 @@ jobs:
           python3 -m pip install --no-cache-dir -r research/requirements-mae.txt
           python3 -m unittest discover -s research/mae_tests -v
           python3 research/weekly_stability.py --inputs output/frozen \
-            --variant ${{ matrix.variant }} --context output/context/context.json --output output/weekly-stability
+            --variant ${{ matrix.variant }} --context output/context/context.json --output output/weekly-stability --workers 4
       - name: Preserve failed accuracy evidence as well as successful results
         if: always()
         uses: actions/upload-artifact@v4
