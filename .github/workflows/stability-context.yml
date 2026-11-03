@@ -1,0 +1,26 @@
+name: OilCast point-in-time stability context research
+'on':
+  push:
+    branches: ['fix/four-fuel-mae-v6-20261103']
+    paths: ['research/collect_stability_context.py', '.github/workflows/stability-context.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe-context:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - name: Verify dated neighbor tables and news first-seen archives
+        run: python3 research/collect_stability_context.py --policy data/research/cpc-policy-20261103.json --output output/stability-context --probe
+      - name: Preserve provenance and source failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: oilcast-stability-context-${{ github.run_id }}
+          path: output/stability-context/
+          if-no-files-found: error
+          retention-days: 45
