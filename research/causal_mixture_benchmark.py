@@ -171,24 +171,30 @@ def evaluate_candidates(x,y,rows):
     bases=[{FUELS[f]:scoring(y[a:b,f],np.zeros(b-a))
             for f in range(4)} for a,b in folds]
     choices={}
-    for f in range(4):
-        fuel=FUELS[f]
-        baseline=float(np.mean([v[fuel]["mae"] for v in bases]))
+    # Select ONE gasoline candidate from the joint historical gas MAE.
+    # A single adjustment forecast is then applied to 92/95/98,
+    # as specified by the CPC price adjustment rules.
+    for members in (FUELS[:3],(FUELS[3],)):
+        base_scores=[float(np.mean([z[name]["mae"] for name in members]))
+                     for z in bases]
+        baseline=float(np.mean(base_scores))
         eligible=[]
         for key,score_list in candidates.items():
-            maelist=[z["fuels"][fuel]["mae"] for z in score_list]
+            maelist=[float(np.mean([z["fuels"][name]["mae"] for name in members]))
+                     for z in score_list]
             mean=float(np.mean(maelist))
-            wins=sum(maelist[k]+MIN_GAP<bases[k][fuel]["mae"]
+            wins=sum(maelist[k]+MIN_GAP<base_scores[k]
                      for k in range(len(folds)))
-            # Changed-week recall is a diagnostic, not a substitute for MAE.
             if wins>=3 and mean+MIN_GAP<baseline:
                 eligible.append((mean,key,wins))
         eligible.sort()
-        choices[fuel]={"candidate":eligible[0][1] if eligible else "unchanged",
-                       "meanHistoricalMae":round(eligible[0][0],6) if eligible else baseline,
-                       "baselineHistoricalMae":baseline,
-                       "historicalWinningFolds":eligible[0][2] if eligible else 0,
-                       "eligibleChoices":len(eligible)}
+        for fuel in members:
+            choices[fuel]={"candidate":eligible[0][1] if eligible else "unchanged",
+                           "sharedFuelHead":"gas" if len(members)==3 else "diesel",
+                           "meanHistoricalMae":round(eligible[0][0],6) if eligible else baseline,
+                           "baselineHistoricalMae":baseline,
+                           "historicalWinningFolds":eligible[0][2] if eligible else 0,
+                           "eligibleChoices":len(eligible)}
     # Only after choices are frozen may holdout diagnostics be calculated.
     audit_scores={}
     ranked_unique=sorted(set(c["candidate"] for c in choices.values())-{"unchanged"})
