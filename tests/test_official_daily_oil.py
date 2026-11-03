@@ -18,7 +18,8 @@ def csv_example():
 def asof(iso):
     v=[0.]*26
     v[12]=1.0
-    return {"cutoff":iso+"T00:00:00Z","features":[v]*4}
+    utc=(dt.date.fromisoformat(iso)-dt.timedelta(days=1)).isoformat()
+    return {"origin":iso,"cutoff":utc+"T16:00:00Z","features":[v]*4}
 
 
 class OfficialDailyOilTest(unittest.TestCase):
