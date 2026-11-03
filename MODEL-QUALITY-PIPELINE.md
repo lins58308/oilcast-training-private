@@ -4,6 +4,11 @@ Both versions follow the same **time-safe public-data and signed-model pipeline*
 The model is not promised to forecast every price change. Passing integration tests
 means the pipeline is internally consistent, **not** that future forecasts are accurate.
 
+The [2026-11-03 MAE optimization](research/MAE-OPTIMIZATION-20261103.md)
+adds smooth absolute-error fitting to the existing robust candidate and a
+reproducible per-fuel paired audit. Current all-four accuracy gates remain
+unmet; candidate improvement is not production promotion.
+
 ## Common sequence
 
 1. **Synchronize public observations:** CPC effective-date price-change events,
