@@ -49,13 +49,25 @@ jobs:
         run: |
           python3 -m pip install --no-cache-dir 'numpy>=1.26,<3' 'catboost>=1.2.7,<2'
           python3 -m unittest discover -s tests -p 'test_dubai_proxy.py' -v
+          python3 -m unittest discover -s tests -p 'test_official_daily_oil.py' -v
           curl --fail --location --silent --show-error --retry 3 --max-time 120 \
             'https://fred.stlouisfed.org/graph/fredgraph.csv?id=POILDUBUSDM&cosd=1992-01-01' \
             --output output/dubai-monthly.csv
+          curl --fail --location --silent --show-error --retry 3 --max-time 120 \
+            'https://www2.moeaea.gov.tw/oil111/csv/GlobalOilOpenData.csv' \
+            --output output/moea-daily.csv
+          python3 - <<'PY'
+          import csv
+          with open('output/moea-daily.csv',encoding='utf-8-sig') as f:
+            rows=list(csv.DictReader(f))
+          assert len(rows)>4000 and {'日期','杜拜(美元/桶)','布蘭特(美元/桶)'} <= rows[0].keys()
+          print('Verified MOEA daily data:',len(rows),'records, earliest',rows[-1]['日期'],'latest',rows[0]['日期'],flush=True)
+          PY
           head -n 2 output/dubai-monthly.csv
           python3 -m py_compile research/accuracy_benchmark.py
           python3 research/accuracy_benchmark.py --dataset output/accuracy-dataset.json \
             --variant "$VARIANT" --dubai-csv output/dubai-monthly.csv \
+            --official-daily output/moea-daily.csv \
             --output "output/accuracy-$VARIANT"
       - name: Preserve original reproducible benchmark and never publish poor models
         if: always()
