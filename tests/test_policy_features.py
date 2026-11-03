@@ -61,4 +61,16 @@ class PolicyFeatureTest(unittest.TestCase):
             feature_for_period([dict(origin("2026-11-02"),cutoff="2026-11-02T00:00:00Z")],
               {"schema":1,"notFuturePolicyAnswers":True,"notices":[valid]})
 
+    def test_adjacent_week_changes_survive_equal_amounts_moves_and_missing_weeks(self):
+        events=[notice('2026-10-17',1,5,None,True),notice('2026-10-24',2,6,None,True),notice('2026-10-31',3,6,None,True)]
+        payload={'schema':1,'notFuturePolicyAnswers':True,'notices':events}
+        f,_=feature_for_period([origin('2026-11-02')],payload)
+        self.assertEqual(f[0][0][11],0.) # not 6 minus the older distinct 5
+        events[-1]=notice('2026-10-31',3,9,None,False)
+        f,_=feature_for_period([origin('2026-11-02')],payload)
+        self.assertAlmostEqual(f[0][0][11],.3) # retained when price changes
+        events.pop(1) # no observed policy in the immediately prior week
+        f,_=feature_for_period([origin('2026-11-02')],payload)
+        self.assertEqual(f[0][0][11],0.)
+
 if __name__=="__main__":unittest.main()

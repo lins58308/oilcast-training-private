@@ -104,3 +104,8 @@ python3 research/mae_walk_forward.py --inputs INPUT_DIRECTORY --variant v6 --out
 V7 uses its artifact and `--variant v7`. The workflow also checks out the
 pinned original trainer, runs `SignedCoreMaeAudit.java` on both sources,
 and generates their paired per-fuel JSON comparison.
+
+
+The [baseline-challenger follow-up](BASELINE-CHALLENGER-20261103.md) corrects
+shared policy features and expands validation to 1,139 continuous weeks. Its
+small aggregate improvements are not sufficient for the original upgrade gate.

@@ -1,0 +1,1344 @@
+{
+  "schema": 1,
+  "variant": "v7",
+  "method": "zero-inclusive conditional median with optional relative-loss abstention",
+  "sourceManifest": {
+    "schema": 1,
+    "variant": "v7",
+    "sourceCommit": "2b7fac70aced13e65df157a4882ad3de9a87fb02",
+    "asOf": "2026-11-03T02:00:00Z",
+    "checkpointTag": "training-checkpoint-v7",
+    "weeklyExamples": 1412,
+    "historicalAuditPreviouslyInspected": true,
+    "automaticPromotionApproved": false,
+    "sha256": {
+      "checkpoint.json": "de10863336241758e875c695a5bf117931cb677bdf12155f1452239bcbc95ca3",
+      "dataset.json": "3eaaa92949de1398898b83324b7f409f154cbcf7f14e56db150fc7a8f1c8ebd2",
+      "dubai-monthly.csv": "10f7a5cb65b4591e6e34823b2248b46dcbdde79611f4e638d43acf412a4baf0c",
+      "json.jar": "3cf6cd6892e32e2b4c1c39e0f52f5248a2f5b37646fdfbb79a66b46b618414ed",
+      "moea-daily.csv": "b035e68305452ab57e7841e20d4cab4089fc957831e3242efe28d50931777a46",
+      "policy.json": "9466e47a7dde67974d9aa644a9d4f2c41d01b43068419842f323b86948826478"
+    }
+  },
+  "candidateSpecs": [
+    {
+      "name": "kernel-market",
+      "method": "kernel",
+      "inputs": "market",
+      "leaf": 16,
+      "risk_margin": 0.0
+    },
+    {
+      "name": "cdf-market",
+      "method": "forest",
+      "inputs": "market",
+      "leaf": 16,
+      "risk_margin": 0.0
+    },
+    {
+      "name": "cdf-policy",
+      "method": "forest",
+      "inputs": "policy",
+      "leaf": 16,
+      "risk_margin": 0.0
+    },
+    {
+      "name": "cdf-policy-wide",
+      "method": "forest",
+      "inputs": "policy",
+      "leaf": 32,
+      "risk_margin": 0.0
+    },
+    {
+      "name": "cdf-policy-cautious",
+      "method": "forest",
+      "inputs": "policy",
+      "leaf": 16,
+      "risk_margin": 1.0
+    },
+    {
+      "name": "cdf-news-cautious",
+      "method": "forest",
+      "inputs": "news",
+      "leaf": 32,
+      "risk_margin": 1.0
+    }
+  ],
+  "coverage": {
+    "dailyQuoteWeeks": 1383,
+    "policyWeeks": 365,
+    "newsWeeks": 524,
+    "weeklyExamples": 1412
+  },
+  "selectedBeforeAudit": [
+    {
+      "fuels": [
+        "92",
+        "95",
+        "98"
+      ],
+      "selected": "unchanged",
+      "eligibleCandidates": [],
+      "candidateGates": {
+        "kernel-market": {
+          "92": {
+            "olderMeanMae": 0.21846153846153848,
+            "olderBaselineMae": 0.21846153846153848,
+            "olderWinningFolds": 0,
+            "olderConsistencyPassed": false,
+            "recentOriginalMaeMarginsPassed": false,
+            "directionPassed": true,
+            "falseMovePassed": true,
+            "passed": false
+          },
+          "95": {
+            "olderMeanMae": 0.21846153846153848,
+            "olderBaselineMae": 0.21846153846153848,
+            "olderWinningFolds": 0,
+            "olderConsistencyPassed": false,
+            "recentOriginalMaeMarginsPassed": false,
+            "directionPassed": true,
+            "falseMovePassed": true,
+            "passed": false
+          },
+          "98": {
+            "olderMeanMae": 0.21846153846153832,
+            "olderBaselineMae": 0.21846153846153832,
+            "olderWinningFolds": 0,
+            "olderConsistencyPassed": false,
+            "recentOriginalMaeMarginsPassed": false,
+            "directionPassed": true,
+            "falseMovePassed": true,
+            "passed": false
+          }
+        },
+        "cdf-market": {
+          "92": {
+            "olderMeanMae": 0.21692307692307694,
+            "olderBaselineMae": 0.21846153846153848,
+            "olderWinningFolds": 0,
+            "olderConsistencyPassed": false,
+            "recentOriginalMaeMarginsPassed": false,
+            "directionPassed": true,
+            "falseMovePassed": true,
+            "passed": false
+          },
+          "95": {
+            "olderMeanMae": 0.21692307692307694,
+            "olderBaselineMae": 0.21846153846153848,
+            "olderWinningFolds": 0,
+            "olderConsistencyPassed": false,
+            "recentOriginalMaeMarginsPassed": false,
+            "directionPassed": true,
+            "falseMovePassed": true,
+            "passed": false
+          },
+          "98": {
+            "olderMeanMae": 0.21692307692307677,
+            "olderBaselineMae": 0.21846153846153832,
+            "olderWinningFolds": 0,
+            "olderConsistencyPassed": false,
+            "recentOriginalMaeMarginsPassed": false,
+            "directionPassed": true,
+            "falseMovePassed": true,
+            "passed": false
+          }
+        },
+        "cdf-policy": {
+          "92": {
+            "olderMeanMae": 0.21076923076923074,
+            "olderBaselineMae": 0.21846153846153848,
+            "olderWinningFolds": 1,
+            "olderConsistencyPassed": false,
+            "recentOriginalMaeMarginsPassed": false,
+            "directionPassed": true,
+            "falseMovePassed": true,
+            "passed": false
+          },
+          "95": {
+            "olderMeanMae": 0.21076923076923074,
+            "olderBaselineMae": 0.21846153846153848,
+            "olderWinningFolds": 1,
+            "olderConsistencyPassed": false,
+            "recentOriginalMaeMarginsPassed": false,
+            "directionPassed": true,
+            "falseMovePassed": true,
+            "passed": false
+          },
+          "98": {
+            "olderMeanMae": 0.21076923076923046,
+            "olderBaselineMae": 0.21846153846153832,
+            "olderWinningFolds": 1,
+            "olderConsistencyPassed": false,
+            "recentOriginalMaeMarginsPassed": false,
+            "directionPassed": true,
+            "falseMovePassed": true,
+            "passed": false
+          }
+        },
+        "cdf-policy-wide": {
+          "92": {
+            "olderMeanMae": 0.21230769230769223,
+            "olderBaselineMae": 0.21846153846153848,
+            "olderWinningFolds": 1,
+            "olderConsistencyPassed": false,
+            "recentOriginalMaeMarginsPassed": false,
+            "directionPassed": true,
+            "falseMovePassed": true,
+            "passed": false
+          },
+          "95": {
+            "olderMeanMae": 0.21230769230769223,
+            "olderBaselineMae": 0.21846153846153848,
+            "olderWinningFolds": 1,
+            "olderConsistencyPassed": false,
+            "recentOriginalMaeMarginsPassed": false,
+            "directionPassed": true,
+            "falseMovePassed": true,
+            "passed": false
+          },
+          "98": {
+            "olderMeanMae": 0.212307692307692,
+            "olderBaselineMae": 0.21846153846153832,
+            "olderWinningFolds": 1,
+            "olderConsistencyPassed": false,
+            "recentOriginalMaeMarginsPassed": false,
+            "directionPassed": true,
+            "falseMovePassed": true,
+            "passed": false
+          }
+        },
+        "cdf-policy-cautious": {
+          "92": {
+            "olderMeanMae": 0.2046153846153846,
+            "olderBaselineMae": 0.21846153846153848,
+            "olderWinningFolds": 1,
+            "olderConsistencyPassed": false,
+            "recentOriginalMaeMarginsPassed": false,
+            "directionPassed": true,
+            "falseMovePassed": true,
+            "passed": false
+          },
+          "95": {
+            "olderMeanMae": 0.2046153846153846,
+            "olderBaselineMae": 0.21846153846153848,
+            "olderWinningFolds": 1,
+            "olderConsistencyPassed": false,
+            "recentOriginalMaeMarginsPassed": false,
+            "directionPassed": true,
+            "falseMovePassed": true,
+            "passed": false
+          },
+          "98": {
+            "olderMeanMae": 0.20461538461538434,
+            "olderBaselineMae": 0.21846153846153832,
+            "olderWinningFolds": 1,
+            "olderConsistencyPassed": false,
+            "recentOriginalMaeMarginsPassed": false,
+            "directionPassed": true,
+            "falseMovePassed": true,
+            "passed": false
+          }
+        },
+        "cdf-news-cautious": {
+          "92": {
+            "olderMeanMae": 0.21076923076923065,
+            "olderBaselineMae": 0.21846153846153848,
+            "olderWinningFolds": 1,
+            "olderConsistencyPassed": false,
+            "recentOriginalMaeMarginsPassed": false,
+            "directionPassed": true,
+            "falseMovePassed": true,
+            "passed": false
+          },
+          "95": {
+            "olderMeanMae": 0.21076923076923065,
+            "olderBaselineMae": 0.21846153846153848,
+            "olderWinningFolds": 1,
+            "olderConsistencyPassed": false,
+            "recentOriginalMaeMarginsPassed": false,
+            "directionPassed": true,
+            "falseMovePassed": true,
+            "passed": false
+          },
+          "98": {
+            "olderMeanMae": 0.21076923076923046,
+            "olderBaselineMae": 0.21846153846153832,
+            "olderWinningFolds": 1,
+            "olderConsistencyPassed": false,
+            "recentOriginalMaeMarginsPassed": false,
+            "directionPassed": true,
+            "falseMovePassed": true,
+            "passed": false
+          }
+        }
+      }
+    },
+    {
+      "fuels": [
+        "diesel"
+      ],
+      "selected": "unchanged",
+      "eligibleCandidates": [],
+      "candidateGates": {
+        "kernel-market": {
+          "diesel": {
+            "olderMeanMae": 0.21230769230769236,
+            "olderBaselineMae": 0.21230769230769236,
+            "olderWinningFolds": 0,
+            "olderConsistencyPassed": false,
+            "recentOriginalMaeMarginsPassed": false,
+            "directionPassed": true,
+            "falseMovePassed": true,
+            "passed": false
+          }
+        },
+        "cdf-market": {
+          "diesel": {
+            "olderMeanMae": 0.2092307692307694,
+            "olderBaselineMae": 0.21230769230769236,
+            "olderWinningFolds": 0,
+            "olderConsistencyPassed": false,
+            "recentOriginalMaeMarginsPassed": false,
+            "directionPassed": true,
+            "falseMovePassed": true,
+            "passed": false
+          }
+        },
+        "cdf-policy": {
+          "diesel": {
+            "olderMeanMae": 0.20307692307692315,
+            "olderBaselineMae": 0.21230769230769236,
+            "olderWinningFolds": 1,
+            "olderConsistencyPassed": false,
+            "recentOriginalMaeMarginsPassed": false,
+            "directionPassed": true,
+            "falseMovePassed": true,
+            "passed": false
+          }
+        },
+        "cdf-policy-wide": {
+          "diesel": {
+            "olderMeanMae": 0.20153846153846172,
+            "olderBaselineMae": 0.21230769230769236,
+            "olderWinningFolds": 1,
+            "olderConsistencyPassed": false,
+            "recentOriginalMaeMarginsPassed": false,
+            "directionPassed": true,
+            "falseMovePassed": true,
+            "passed": false
+          }
+        },
+        "cdf-policy-cautious": {
+          "diesel": {
+            "olderMeanMae": 0.20000000000000004,
+            "olderBaselineMae": 0.21230769230769236,
+            "olderWinningFolds": 1,
+            "olderConsistencyPassed": false,
+            "recentOriginalMaeMarginsPassed": false,
+            "directionPassed": true,
+            "falseMovePassed": true,
+            "passed": false
+          }
+        },
+        "cdf-news-cautious": {
+          "diesel": {
+            "olderMeanMae": 0.20307692307692324,
+            "olderBaselineMae": 0.21230769230769236,
+            "olderWinningFolds": 1,
+            "olderConsistencyPassed": false,
+            "recentOriginalMaeMarginsPassed": false,
+            "directionPassed": true,
+            "falseMovePassed": true,
+            "passed": false
+          }
+        }
+      }
+    }
+  ],
+  "audit": {
+    "start": "2026-08-10",
+    "end": "2026-11-02",
+    "candidate": {
+      "92": {
+        "mae": 0.053846153846153794,
+        "rmse": 0.19414506867883,
+        "directionAccuracy": 0.9230769230769231,
+        "changedWeekRecall": 0.0,
+        "falseMoveRate": 0.0,
+        "changedWeeks": 1,
+        "falseMoves": 0,
+        "weeks": 13,
+        "gainOnChangedWeeks": 0.0,
+        "costOnUnchangedWeeks": 0.0,
+        "netErrorReduction": 0.0,
+        "gainRequiredFor0_01Mae": 0.13
+      },
+      "95": {
+        "mae": 0.053846153846154064,
+        "rmse": 0.19414506867883097,
+        "directionAccuracy": 0.9230769230769231,
+        "changedWeekRecall": 0.0,
+        "falseMoveRate": 0.0,
+        "changedWeeks": 1,
+        "falseMoves": 0,
+        "weeks": 13,
+        "gainOnChangedWeeks": 0.0,
+        "costOnUnchangedWeeks": 0.0,
+        "netErrorReduction": 0.0,
+        "gainRequiredFor0_01Mae": 0.13
+      },
+      "98": {
+        "mae": 0.053846153846154064,
+        "rmse": 0.19414506867883097,
+        "directionAccuracy": 0.9230769230769231,
+        "changedWeekRecall": 0.0,
+        "falseMoveRate": 0.0,
+        "changedWeeks": 1,
+        "falseMoves": 0,
+        "weeks": 13,
+        "gainOnChangedWeeks": 0.0,
+        "costOnUnchangedWeeks": 0.0,
+        "netErrorReduction": 0.0,
+        "gainRequiredFor0_01Mae": 0.13
+      },
+      "diesel": {
+        "mae": 0.04615384615384599,
+        "rmse": 0.16641005886756816,
+        "directionAccuracy": 0.9230769230769231,
+        "changedWeekRecall": 0.0,
+        "falseMoveRate": 0.0,
+        "changedWeeks": 1,
+        "falseMoves": 0,
+        "weeks": 13,
+        "gainOnChangedWeeks": 0.0,
+        "costOnUnchangedWeeks": 0.0,
+        "netErrorReduction": 0.0,
+        "gainRequiredFor0_01Mae": 0.13
+      }
+    },
+    "baseline": {
+      "92": {
+        "mae": 0.053846153846153794,
+        "rmse": 0.19414506867883,
+        "directionAccuracy": 0.9230769230769231,
+        "changedWeekRecall": 0.0,
+        "falseMoveRate": 0.0,
+        "changedWeeks": 1,
+        "falseMoves": 0,
+        "weeks": 13,
+        "gainOnChangedWeeks": 0.0,
+        "costOnUnchangedWeeks": 0.0,
+        "netErrorReduction": 0.0,
+        "gainRequiredFor0_01Mae": 0.13
+      },
+      "95": {
+        "mae": 0.053846153846154064,
+        "rmse": 0.19414506867883097,
+        "directionAccuracy": 0.9230769230769231,
+        "changedWeekRecall": 0.0,
+        "falseMoveRate": 0.0,
+        "changedWeeks": 1,
+        "falseMoves": 0,
+        "weeks": 13,
+        "gainOnChangedWeeks": 0.0,
+        "costOnUnchangedWeeks": 0.0,
+        "netErrorReduction": 0.0,
+        "gainRequiredFor0_01Mae": 0.13
+      },
+      "98": {
+        "mae": 0.053846153846154064,
+        "rmse": 0.19414506867883097,
+        "directionAccuracy": 0.9230769230769231,
+        "changedWeekRecall": 0.0,
+        "falseMoveRate": 0.0,
+        "changedWeeks": 1,
+        "falseMoves": 0,
+        "weeks": 13,
+        "gainOnChangedWeeks": 0.0,
+        "costOnUnchangedWeeks": 0.0,
+        "netErrorReduction": 0.0,
+        "gainRequiredFor0_01Mae": 0.13
+      },
+      "diesel": {
+        "mae": 0.04615384615384599,
+        "rmse": 0.16641005886756816,
+        "directionAccuracy": 0.9230769230769231,
+        "changedWeekRecall": 0.0,
+        "falseMoveRate": 0.0,
+        "changedWeeks": 1,
+        "falseMoves": 0,
+        "weeks": 13,
+        "gainOnChangedWeeks": 0.0,
+        "costOnUnchangedWeeks": 0.0,
+        "netErrorReduction": 0.0,
+        "gainRequiredFor0_01Mae": 0.13
+      }
+    }
+  },
+  "allFourHistoricalAuditGatesPassed": false,
+  "errorBudgetRule": "changed-week error reduction must exceed unchanged-week false-movement cost plus 0.01 times the number of scored weeks",
+  "continuousReplay": {
+    "schema": 1,
+    "variant": "v7",
+    "candidate": {
+      "name": "cdf-policy-cautious",
+      "method": "forest",
+      "inputs": "policy",
+      "leaf": 16,
+      "risk_margin": 1.0
+    },
+    "from": "2004-10-11",
+    "through": "2026-08-03",
+    "weeklyOrigins": 1139,
+    "trainingStart": "1999-10-11",
+    "fullExpandingTraining": true,
+    "frozenFitBlockWeeks": 13,
+    "guardUsesOnlyEarlier26SettledWeeks": true,
+    "knownFinal13WeeksExcluded": true,
+    "retrospectiveDiagnosticsNotBlind": true,
+    "scores": {
+      "all": {
+        "weeks": 1139,
+        "baseline": {
+          "92": {
+            "mae": 0.2918349429323969,
+            "rmse": 0.47143142194958193,
+            "directionAccuracy": 0.26865671641791045,
+            "changedWeekRecall": 0.0,
+            "falseMoveRate": 0.0,
+            "changedWeeks": 833,
+            "falseMoves": 0,
+            "weeks": 1139,
+            "gainOnChangedWeeks": 0.0,
+            "costOnUnchangedWeeks": 0.0,
+            "netErrorReduction": 0.0,
+            "gainRequiredFor0_01Mae": 11.39
+          },
+          "95": {
+            "mae": 0.29253731343283584,
+            "rmse": 0.4754370476769509,
+            "directionAccuracy": 0.26865671641791045,
+            "changedWeekRecall": 0.0,
+            "falseMoveRate": 0.0,
+            "changedWeeks": 833,
+            "falseMoves": 0,
+            "weeks": 1139,
+            "gainOnChangedWeeks": 0.0,
+            "costOnUnchangedWeeks": 0.0,
+            "netErrorReduction": 0.0,
+            "gainRequiredFor0_01Mae": 11.39
+          },
+          "98": {
+            "mae": 0.2929762949956102,
+            "rmse": 0.47852018011194,
+            "directionAccuracy": 0.26865671641791045,
+            "changedWeekRecall": 0.0,
+            "falseMoveRate": 0.0,
+            "changedWeeks": 833,
+            "falseMoves": 0,
+            "weeks": 1139,
+            "gainOnChangedWeeks": 0.0,
+            "costOnUnchangedWeeks": 0.0,
+            "netErrorReduction": 0.0,
+            "gainRequiredFor0_01Mae": 11.39
+          },
+          "diesel": {
+            "mae": 0.3126426690079016,
+            "rmse": 0.5098072420593784,
+            "directionAccuracy": 0.2546093064091308,
+            "changedWeekRecall": 0.0,
+            "falseMoveRate": 0.0,
+            "changedWeeks": 849,
+            "falseMoves": 0,
+            "weeks": 1139,
+            "gainOnChangedWeeks": 0.0,
+            "costOnUnchangedWeeks": 0.0,
+            "netErrorReduction": 0.0,
+            "gainRequiredFor0_01Mae": 11.39
+          }
+        },
+        "conditionalMedian": {
+          "92": {
+            "mae": 0.29130816505706764,
+            "rmse": 0.4696027873376917,
+            "directionAccuracy": 0.30201931518876207,
+            "changedWeekRecall": 0.058823529411764705,
+            "falseMoveRate": 0.03594771241830065,
+            "changedWeeks": 833,
+            "falseMoves": 11,
+            "weeks": 1139,
+            "gainOnChangedWeeks": 2.299999999999999,
+            "costOnUnchangedWeeks": 1.6999999999999993,
+            "netErrorReduction": 0.5999999999999996,
+            "gainRequiredFor0_01Mae": 11.39
+          },
+          "95": {
+            "mae": 0.2920105355575066,
+            "rmse": 0.4736238788085962,
+            "directionAccuracy": 0.30201931518876207,
+            "changedWeekRecall": 0.058823529411764705,
+            "falseMoveRate": 0.03594771241830065,
+            "changedWeeks": 833,
+            "falseMoves": 11,
+            "weeks": 1139,
+            "gainOnChangedWeeks": 2.3000000000000043,
+            "costOnUnchangedWeeks": 1.6999999999999957,
+            "netErrorReduction": 0.6000000000000085,
+            "gainRequiredFor0_01Mae": 11.39
+          },
+          "98": {
+            "mae": 0.29244951712028094,
+            "rmse": 0.47671873788250446,
+            "directionAccuracy": 0.30201931518876207,
+            "changedWeekRecall": 0.058823529411764705,
+            "falseMoveRate": 0.03594771241830065,
+            "changedWeeks": 833,
+            "falseMoves": 11,
+            "weeks": 1139,
+            "gainOnChangedWeeks": 2.3000000000000114,
+            "costOnUnchangedWeeks": 1.7000000000000028,
+            "netErrorReduction": 0.6000000000000085,
+            "gainRequiredFor0_01Mae": 11.39
+          },
+          "diesel": {
+            "mae": 0.3103599648814749,
+            "rmse": 0.5052229403845212,
+            "directionAccuracy": 0.2914837576821773,
+            "changedWeekRecall": 0.061248527679623084,
+            "falseMoveRate": 0.034482758620689655,
+            "changedWeeks": 849,
+            "falseMoves": 10,
+            "weeks": 1139,
+            "gainOnChangedWeeks": 3.8999999999999897,
+            "costOnUnchangedWeeks": 1.29999999999999,
+            "netErrorReduction": 2.5999999999999996,
+            "gainRequiredFor0_01Mae": 11.39
+          }
+        },
+        "pastOnlyGuarded": {
+          "92": {
+            "mae": 0.29069359086918356,
+            "rmse": 0.47015399192116086,
+            "directionAccuracy": 0.2932396839332748,
+            "changedWeekRecall": 0.03841536614645858,
+            "falseMoveRate": 0.013071895424836602,
+            "changedWeeks": 833,
+            "falseMoves": 4,
+            "weeks": 1139,
+            "gainOnChangedWeeks": 2.0999999999999996,
+            "costOnUnchangedWeeks": 0.8000000000000007,
+            "netErrorReduction": 1.299999999999999,
+            "gainRequiredFor0_01Mae": 11.39
+          },
+          "95": {
+            "mae": 0.2913959613696225,
+            "rmse": 0.47417040905329966,
+            "directionAccuracy": 0.2932396839332748,
+            "changedWeekRecall": 0.03841536614645858,
+            "falseMoveRate": 0.013071895424836602,
+            "changedWeeks": 833,
+            "falseMoves": 4,
+            "weeks": 1139,
+            "gainOnChangedWeeks": 2.099999999999998,
+            "costOnUnchangedWeeks": 0.7999999999999972,
+            "netErrorReduction": 1.3000000000000007,
+            "gainRequiredFor0_01Mae": 11.39
+          },
+          "98": {
+            "mae": 0.2918349429323968,
+            "rmse": 0.4772617241015266,
+            "directionAccuracy": 0.2932396839332748,
+            "changedWeekRecall": 0.03841536614645858,
+            "falseMoveRate": 0.013071895424836602,
+            "changedWeeks": 833,
+            "falseMoves": 4,
+            "weeks": 1139,
+            "gainOnChangedWeeks": 2.1000000000000014,
+            "costOnUnchangedWeeks": 0.8000000000000007,
+            "netErrorReduction": 1.3000000000000007,
+            "gainRequiredFor0_01Mae": 11.39
+          },
+          "diesel": {
+            "mae": 0.3108867427568041,
+            "rmse": 0.5066805675587955,
+            "directionAccuracy": 0.2800702370500439,
+            "changedWeekRecall": 0.04122497055359246,
+            "falseMoveRate": 0.020689655172413793,
+            "changedWeeks": 849,
+            "falseMoves": 6,
+            "weeks": 1139,
+            "gainOnChangedWeeks": 2.899999999999997,
+            "costOnUnchangedWeeks": 0.8999999999999915,
+            "netErrorReduction": 2.0000000000000053,
+            "gainRequiredFor0_01Mae": 11.39
+          }
+        },
+        "guardEnabledWeeks": {
+          "92": 133,
+          "95": 133,
+          "98": 133,
+          "diesel": 124
+        }
+      },
+      "2004-2018": {
+        "weeks": 743,
+        "baseline": {
+          "92": {
+            "mae": 0.29986541049798116,
+            "rmse": 0.48046635039586144,
+            "directionAccuracy": 0.30148048452220727,
+            "changedWeekRecall": 0.0,
+            "falseMoveRate": 0.0,
+            "changedWeeks": 519,
+            "falseMoves": 0,
+            "weeks": 743,
+            "gainOnChangedWeeks": 0.0,
+            "costOnUnchangedWeeks": 0.0,
+            "netErrorReduction": 0.0,
+            "gainRequiredFor0_01Mae": 7.43
+          },
+          "95": {
+            "mae": 0.3009421265141318,
+            "rmse": 0.48647937299533345,
+            "directionAccuracy": 0.30148048452220727,
+            "changedWeekRecall": 0.0,
+            "falseMoveRate": 0.0,
+            "changedWeeks": 519,
+            "falseMoves": 0,
+            "weeks": 743,
+            "gainOnChangedWeeks": 0.0,
+            "costOnUnchangedWeeks": 0.0,
+            "netErrorReduction": 0.0,
+            "gainRequiredFor0_01Mae": 7.43
+          },
+          "98": {
+            "mae": 0.3016150740242261,
+            "rmse": 0.4910915685160599,
+            "directionAccuracy": 0.30148048452220727,
+            "changedWeekRecall": 0.0,
+            "falseMoveRate": 0.0,
+            "changedWeeks": 519,
+            "falseMoves": 0,
+            "weeks": 743,
+            "gainOnChangedWeeks": 0.0,
+            "costOnUnchangedWeeks": 0.0,
+            "netErrorReduction": 0.0,
+            "gainRequiredFor0_01Mae": 7.43
+          },
+          "diesel": {
+            "mae": 0.32624495289367417,
+            "rmse": 0.5279789546766297,
+            "directionAccuracy": 0.28667563930013457,
+            "changedWeekRecall": 0.0,
+            "falseMoveRate": 0.0,
+            "changedWeeks": 530,
+            "falseMoves": 0,
+            "weeks": 743,
+            "gainOnChangedWeeks": 0.0,
+            "costOnUnchangedWeeks": 0.0,
+            "netErrorReduction": 0.0,
+            "gainRequiredFor0_01Mae": 7.43
+          }
+        },
+        "conditionalMedian": {
+          "92": {
+            "mae": 0.3002691790040377,
+            "rmse": 0.47991980038840365,
+            "directionAccuracy": 0.30955585464333785,
+            "changedWeekRecall": 0.011560693641618497,
+            "falseMoveRate": 0.0,
+            "changedWeeks": 519,
+            "falseMoves": 0,
+            "weeks": 743,
+            "gainOnChangedWeeks": -0.2999999999999936,
+            "costOnUnchangedWeeks": 0.0,
+            "netErrorReduction": -0.2999999999999936,
+            "gainRequiredFor0_01Mae": 7.43
+          },
+          "95": {
+            "mae": 0.3013458950201884,
+            "rmse": 0.4859395860516606,
+            "directionAccuracy": 0.30955585464333785,
+            "changedWeekRecall": 0.011560693641618497,
+            "falseMoveRate": 0.0,
+            "changedWeeks": 519,
+            "falseMoves": 0,
+            "weeks": 743,
+            "gainOnChangedWeeks": -0.2999999999999936,
+            "costOnUnchangedWeeks": 0.0,
+            "netErrorReduction": -0.2999999999999936,
+            "gainRequiredFor0_01Mae": 7.43
+          },
+          "98": {
+            "mae": 0.3020188425302826,
+            "rmse": 0.4905568566534265,
+            "directionAccuracy": 0.30955585464333785,
+            "changedWeekRecall": 0.011560693641618497,
+            "falseMoveRate": 0.0,
+            "changedWeeks": 519,
+            "falseMoves": 0,
+            "weeks": 743,
+            "gainOnChangedWeeks": -0.2999999999999936,
+            "costOnUnchangedWeeks": 0.0,
+            "netErrorReduction": -0.2999999999999936,
+            "gainRequiredFor0_01Mae": 7.43
+          },
+          "diesel": {
+            "mae": 0.32570659488559883,
+            "rmse": 0.525346773893053,
+            "directionAccuracy": 0.29878869448183043,
+            "changedWeekRecall": 0.018867924528301886,
+            "falseMoveRate": 0.004694835680751174,
+            "changedWeeks": 530,
+            "falseMoves": 1,
+            "weeks": 743,
+            "gainOnChangedWeeks": 0.5,
+            "costOnUnchangedWeeks": 0.09999999999999787,
+            "netErrorReduction": 0.40000000000000213,
+            "gainRequiredFor0_01Mae": 7.43
+          }
+        },
+        "pastOnlyGuarded": {
+          "92": {
+            "mae": 0.30094212651413194,
+            "rmse": 0.48113817503125766,
+            "directionAccuracy": 0.30148048452220727,
+            "changedWeekRecall": 0.0,
+            "falseMoveRate": 0.0,
+            "changedWeeks": 519,
+            "falseMoves": 0,
+            "weeks": 743,
+            "gainOnChangedWeeks": -0.8000000000000007,
+            "costOnUnchangedWeeks": 0.0,
+            "netErrorReduction": -0.8000000000000007,
+            "gainRequiredFor0_01Mae": 7.43
+          },
+          "95": {
+            "mae": 0.3020188425302826,
+            "rmse": 0.4871429050695732,
+            "directionAccuracy": 0.30148048452220727,
+            "changedWeekRecall": 0.0,
+            "falseMoveRate": 0.0,
+            "changedWeeks": 519,
+            "falseMoves": 0,
+            "weeks": 743,
+            "gainOnChangedWeeks": -0.8000000000000007,
+            "costOnUnchangedWeeks": 0.0,
+            "netErrorReduction": -0.8000000000000007,
+            "gainRequiredFor0_01Mae": 7.43
+          },
+          "98": {
+            "mae": 0.30269179004037683,
+            "rmse": 0.49174887725062916,
+            "directionAccuracy": 0.30148048452220727,
+            "changedWeekRecall": 0.0,
+            "falseMoveRate": 0.0,
+            "changedWeeks": 519,
+            "falseMoves": 0,
+            "weeks": 743,
+            "gainOnChangedWeeks": -0.8000000000000007,
+            "costOnUnchangedWeeks": 0.0,
+            "netErrorReduction": -0.8000000000000007,
+            "gainRequiredFor0_01Mae": 7.43
+          },
+          "diesel": {
+            "mae": 0.32624495289367417,
+            "rmse": 0.5260636216762608,
+            "directionAccuracy": 0.29071332436069985,
+            "changedWeekRecall": 0.007547169811320755,
+            "falseMoveRate": 0.004694835680751174,
+            "changedWeeks": 530,
+            "falseMoves": 1,
+            "weeks": 743,
+            "gainOnChangedWeeks": 0.10000000000000497,
+            "costOnUnchangedWeeks": 0.09999999999999787,
+            "netErrorReduction": 7.105427357601002e-15,
+            "gainRequiredFor0_01Mae": 7.43
+          }
+        },
+        "guardEnabledWeeks": {
+          "92": 4,
+          "95": 4,
+          "98": 4,
+          "diesel": 31
+        }
+      },
+      "2019-2025": {
+        "weeks": 365,
+        "baseline": {
+          "92": {
+            "mae": 0.27205479452054804,
+            "rmse": 0.43632964790836265,
+            "directionAccuracy": 0.1780821917808219,
+            "changedWeekRecall": 0.0,
+            "falseMoveRate": 0.0,
+            "changedWeeks": 300,
+            "falseMoves": 0,
+            "weeks": 365,
+            "gainOnChangedWeeks": 0.0,
+            "costOnUnchangedWeeks": 0.0,
+            "netErrorReduction": 0.0,
+            "gainRequiredFor0_01Mae": 3.65
+          },
+          "95": {
+            "mae": 0.27205479452054804,
+            "rmse": 0.43632964790836265,
+            "directionAccuracy": 0.1780821917808219,
+            "changedWeekRecall": 0.0,
+            "falseMoveRate": 0.0,
+            "changedWeeks": 300,
+            "falseMoves": 0,
+            "weeks": 365,
+            "gainOnChangedWeeks": 0.0,
+            "costOnUnchangedWeeks": 0.0,
+            "netErrorReduction": 0.0,
+            "gainRequiredFor0_01Mae": 3.65
+          },
+          "98": {
+            "mae": 0.27205479452054787,
+            "rmse": 0.4363296479083625,
+            "directionAccuracy": 0.1780821917808219,
+            "changedWeekRecall": 0.0,
+            "falseMoveRate": 0.0,
+            "changedWeeks": 300,
+            "falseMoves": 0,
+            "weeks": 365,
+            "gainOnChangedWeeks": 0.0,
+            "costOnUnchangedWeeks": 0.0,
+            "netErrorReduction": 0.0,
+            "gainRequiredFor0_01Mae": 3.65
+          },
+          "diesel": {
+            "mae": 0.28602739726027393,
+            "rmse": 0.468515580653481,
+            "directionAccuracy": 0.16164383561643836,
+            "changedWeekRecall": 0.0,
+            "falseMoveRate": 0.0,
+            "changedWeeks": 306,
+            "falseMoves": 0,
+            "weeks": 365,
+            "gainOnChangedWeeks": 0.0,
+            "costOnUnchangedWeeks": 0.0,
+            "netErrorReduction": 0.0,
+            "gainRequiredFor0_01Mae": 3.65
+          }
+        },
+        "conditionalMedian": {
+          "92": {
+            "mae": 0.2690410958904111,
+            "rmse": 0.4311183291146762,
+            "directionAccuracy": 0.26575342465753427,
+            "changedWeekRecall": 0.14333333333333334,
+            "falseMoveRate": 0.16923076923076924,
+            "changedWeeks": 300,
+            "falseMoves": 11,
+            "weeks": 365,
+            "gainOnChangedWeeks": 2.7999999999999954,
+            "costOnUnchangedWeeks": 1.6999999999999993,
+            "netErrorReduction": 1.099999999999996,
+            "gainRequiredFor0_01Mae": 3.65
+          },
+          "95": {
+            "mae": 0.2690410958904111,
+            "rmse": 0.4311183291146762,
+            "directionAccuracy": 0.26575342465753427,
+            "changedWeekRecall": 0.14333333333333334,
+            "falseMoveRate": 0.16923076923076924,
+            "changedWeeks": 300,
+            "falseMoves": 11,
+            "weeks": 365,
+            "gainOnChangedWeeks": 2.8000000000000007,
+            "costOnUnchangedWeeks": 1.6999999999999957,
+            "netErrorReduction": 1.100000000000005,
+            "gainRequiredFor0_01Mae": 3.65
+          },
+          "98": {
+            "mae": 0.2690410958904109,
+            "rmse": 0.43111832911467607,
+            "directionAccuracy": 0.26575342465753427,
+            "changedWeekRecall": 0.14333333333333334,
+            "falseMoveRate": 0.16923076923076924,
+            "changedWeeks": 300,
+            "falseMoves": 11,
+            "weeks": 365,
+            "gainOnChangedWeeks": 2.800000000000008,
+            "costOnUnchangedWeeks": 1.7000000000000028,
+            "netErrorReduction": 1.100000000000005,
+            "gainRequiredFor0_01Mae": 3.65
+          },
+          "diesel": {
+            "mae": 0.27972602739726027,
+            "rmse": 0.45974978304910447,
+            "directionAccuracy": 0.2547945205479452,
+            "changedWeekRecall": 0.13398692810457516,
+            "falseMoveRate": 0.11864406779661017,
+            "changedWeeks": 306,
+            "falseMoves": 7,
+            "weeks": 365,
+            "gainOnChangedWeeks": 3.2999999999999883,
+            "costOnUnchangedWeeks": 0.9999999999999929,
+            "netErrorReduction": 2.2999999999999954,
+            "gainRequiredFor0_01Mae": 3.65
+          }
+        },
+        "pastOnlyGuarded": {
+          "92": {
+            "mae": 0.2663013698630138,
+            "rmse": 0.43048236722675504,
+            "directionAccuracy": 0.2547945205479452,
+            "changedWeekRecall": 0.10666666666666667,
+            "falseMoveRate": 0.06153846153846154,
+            "changedWeeks": 300,
+            "falseMoves": 4,
+            "weeks": 365,
+            "gainOnChangedWeeks": 2.9000000000000004,
+            "costOnUnchangedWeeks": 0.8000000000000007,
+            "netErrorReduction": 2.0999999999999996,
+            "gainRequiredFor0_01Mae": 3.65
+          },
+          "95": {
+            "mae": 0.26630136986301384,
+            "rmse": 0.43048236722675504,
+            "directionAccuracy": 0.2547945205479452,
+            "changedWeekRecall": 0.10666666666666667,
+            "falseMoveRate": 0.06153846153846154,
+            "changedWeeks": 300,
+            "falseMoves": 4,
+            "weeks": 365,
+            "gainOnChangedWeeks": 2.8999999999999986,
+            "costOnUnchangedWeeks": 0.7999999999999972,
+            "netErrorReduction": 2.1000000000000014,
+            "gainRequiredFor0_01Mae": 3.65
+          },
+          "98": {
+            "mae": 0.26630136986301367,
+            "rmse": 0.4304823672267549,
+            "directionAccuracy": 0.2547945205479452,
+            "changedWeekRecall": 0.10666666666666667,
+            "falseMoveRate": 0.06153846153846154,
+            "changedWeeks": 300,
+            "falseMoves": 4,
+            "weeks": 365,
+            "gainOnChangedWeeks": 2.900000000000002,
+            "costOnUnchangedWeeks": 0.8000000000000007,
+            "netErrorReduction": 2.1000000000000014,
+            "gainRequiredFor0_01Mae": 3.65
+          },
+          "diesel": {
+            "mae": 0.2805479452054794,
+            "rmse": 0.4622754916032065,
+            "directionAccuracy": 0.2328767123287671,
+            "changedWeekRecall": 0.10130718954248366,
+            "falseMoveRate": 0.0847457627118644,
+            "changedWeeks": 306,
+            "falseMoves": 5,
+            "weeks": 365,
+            "gainOnChangedWeeks": 2.799999999999992,
+            "costOnUnchangedWeeks": 0.7999999999999936,
+            "netErrorReduction": 1.9999999999999982,
+            "gainRequiredFor0_01Mae": 3.65
+          }
+        },
+        "guardEnabledWeeks": {
+          "92": 129,
+          "95": 129,
+          "98": 129,
+          "diesel": 93
+        }
+      },
+      "2026-before-audit": {
+        "weeks": 31,
+        "baseline": {
+          "92": {
+            "mae": 0.3322580645161288,
+            "rmse": 0.6255320316184015,
+            "directionAccuracy": 0.5483870967741935,
+            "changedWeekRecall": 0.0,
+            "falseMoveRate": 0.0,
+            "changedWeeks": 14,
+            "falseMoves": 0,
+            "weeks": 31,
+            "gainOnChangedWeeks": 0.0,
+            "costOnUnchangedWeeks": 0.0,
+            "netErrorReduction": 0.0,
+            "gainRequiredFor0_01Mae": 0.31
+          },
+          "95": {
+            "mae": 0.3322580645161288,
+            "rmse": 0.6255320316184017,
+            "directionAccuracy": 0.5483870967741935,
+            "changedWeekRecall": 0.0,
+            "falseMoveRate": 0.0,
+            "changedWeeks": 14,
+            "falseMoves": 0,
+            "weeks": 31,
+            "gainOnChangedWeeks": 0.0,
+            "costOnUnchangedWeeks": 0.0,
+            "netErrorReduction": 0.0,
+            "gainRequiredFor0_01Mae": 0.31
+          },
+          "98": {
+            "mae": 0.33225806451612905,
+            "rmse": 0.6255320316184019,
+            "directionAccuracy": 0.5483870967741935,
+            "changedWeekRecall": 0.0,
+            "falseMoveRate": 0.0,
+            "changedWeeks": 14,
+            "falseMoves": 0,
+            "weeks": 31,
+            "gainOnChangedWeeks": 0.0,
+            "costOnUnchangedWeeks": 0.0,
+            "netErrorReduction": 0.0,
+            "gainRequiredFor0_01Mae": 0.31
+          },
+          "diesel": {
+            "mae": 0.29999999999999993,
+            "rmse": 0.5324926169410934,
+            "directionAccuracy": 0.5806451612903226,
+            "changedWeekRecall": 0.0,
+            "falseMoveRate": 0.0,
+            "changedWeeks": 13,
+            "falseMoves": 0,
+            "weeks": 31,
+            "gainOnChangedWeeks": 0.0,
+            "costOnUnchangedWeeks": 0.0,
+            "netErrorReduction": 0.0,
+            "gainRequiredFor0_01Mae": 0.31
+          }
+        },
+        "conditionalMedian": {
+          "92": {
+            "mae": 0.3387096774193547,
+            "rmse": 0.6275914019024921,
+            "directionAccuracy": 0.5483870967741935,
+            "changedWeekRecall": 0.0,
+            "falseMoveRate": 0.0,
+            "changedWeeks": 14,
+            "falseMoves": 0,
+            "weeks": 31,
+            "gainOnChangedWeeks": -0.20000000000000284,
+            "costOnUnchangedWeeks": 0.0,
+            "netErrorReduction": -0.20000000000000284,
+            "gainRequiredFor0_01Mae": 0.31
+          },
+          "95": {
+            "mae": 0.3387096774193547,
+            "rmse": 0.6275914019024922,
+            "directionAccuracy": 0.5483870967741935,
+            "changedWeekRecall": 0.0,
+            "falseMoveRate": 0.0,
+            "changedWeeks": 14,
+            "falseMoves": 0,
+            "weeks": 31,
+            "gainOnChangedWeeks": -0.20000000000000284,
+            "costOnUnchangedWeeks": 0.0,
+            "netErrorReduction": -0.20000000000000284,
+            "gainRequiredFor0_01Mae": 0.31
+          },
+          "98": {
+            "mae": 0.3387096774193549,
+            "rmse": 0.6275914019024924,
+            "directionAccuracy": 0.5483870967741935,
+            "changedWeekRecall": 0.0,
+            "falseMoveRate": 0.0,
+            "changedWeeks": 14,
+            "falseMoves": 0,
+            "weeks": 31,
+            "gainOnChangedWeeks": -0.20000000000000284,
+            "costOnUnchangedWeeks": 0.0,
+            "netErrorReduction": -0.20000000000000284,
+            "gainRequiredFor0_01Mae": 0.31
+          },
+          "diesel": {
+            "mae": 0.30322580645161273,
+            "rmse": 0.5242506172408566,
+            "directionAccuracy": 0.5483870967741935,
+            "changedWeekRecall": 0.07692307692307693,
+            "falseMoveRate": 0.1111111111111111,
+            "changedWeeks": 13,
+            "falseMoves": 2,
+            "weeks": 31,
+            "gainOnChangedWeeks": 0.10000000000000142,
+            "costOnUnchangedWeeks": 0.1999999999999993,
+            "netErrorReduction": -0.09999999999999787,
+            "gainRequiredFor0_01Mae": 0.31
+          }
+        },
+        "pastOnlyGuarded": {
+          "92": {
+            "mae": 0.3322580645161288,
+            "rmse": 0.6255320316184015,
+            "directionAccuracy": 0.5483870967741935,
+            "changedWeekRecall": 0.0,
+            "falseMoveRate": 0.0,
+            "changedWeeks": 14,
+            "falseMoves": 0,
+            "weeks": 31,
+            "gainOnChangedWeeks": 0.0,
+            "costOnUnchangedWeeks": 0.0,
+            "netErrorReduction": 0.0,
+            "gainRequiredFor0_01Mae": 0.31
+          },
+          "95": {
+            "mae": 0.3322580645161288,
+            "rmse": 0.6255320316184017,
+            "directionAccuracy": 0.5483870967741935,
+            "changedWeekRecall": 0.0,
+            "falseMoveRate": 0.0,
+            "changedWeeks": 14,
+            "falseMoves": 0,
+            "weeks": 31,
+            "gainOnChangedWeeks": 0.0,
+            "costOnUnchangedWeeks": 0.0,
+            "netErrorReduction": 0.0,
+            "gainRequiredFor0_01Mae": 0.31
+          },
+          "98": {
+            "mae": 0.33225806451612905,
+            "rmse": 0.6255320316184019,
+            "directionAccuracy": 0.5483870967741935,
+            "changedWeekRecall": 0.0,
+            "falseMoveRate": 0.0,
+            "changedWeeks": 14,
+            "falseMoves": 0,
+            "weeks": 31,
+            "gainOnChangedWeeks": 0.0,
+            "costOnUnchangedWeeks": 0.0,
+            "netErrorReduction": 0.0,
+            "gainRequiredFor0_01Mae": 0.31
+          },
+          "diesel": {
+            "mae": 0.29999999999999993,
+            "rmse": 0.5324926169410934,
+            "directionAccuracy": 0.5806451612903226,
+            "changedWeekRecall": 0.0,
+            "falseMoveRate": 0.0,
+            "changedWeeks": 13,
+            "falseMoves": 0,
+            "weeks": 31,
+            "gainOnChangedWeeks": 0.0,
+            "costOnUnchangedWeeks": 0.0,
+            "netErrorReduction": 0.0,
+            "gainRequiredFor0_01Mae": 0.31
+          }
+        },
+        "guardEnabledWeeks": {
+          "92": 0,
+          "95": 0,
+          "98": 0,
+          "diesel": 0
+        }
+      }
+    },
+    "automaticPromotionApproved": false,
+    "pairedUncertainty": {
+      "conditionalMedian": {
+        "method": "paired circular 52-week block bootstrap",
+        "draws": 2000,
+        "descriptiveOnlyPreviouslyExaminedHistory": true,
+        "byFuel": {
+          "92": {
+            "meanMaeReduction": 0.0005267778753292358,
+            "lower": -0.002370500438981575,
+            "upper": 0.00447761194029851
+          },
+          "95": {
+            "meanMaeReduction": 0.0005267778753292436,
+            "lower": -0.0023705004389815653,
+            "upper": 0.004477611940298512
+          },
+          "98": {
+            "meanMaeReduction": 0.0005267778753292436,
+            "lower": -0.0023705004389815653,
+            "upper": 0.004477611940298518
+          },
+          "diesel": {
+            "meanMaeReduction": 0.00228270412642669,
+            "lower": -0.00035118525021949113,
+            "upper": 0.006409130816505681
+          }
+        },
+        "allFourPositiveLowerQuantile": -0.002370500438981575
+      },
+      "pastOnlyGuarded": {
+        "method": "paired circular 52-week block bootstrap",
+        "draws": 2000,
+        "descriptiveOnlyPreviouslyExaminedHistory": true,
+        "byFuel": {
+          "92": {
+            "meanMaeReduction": 0.001141352063213344,
+            "lower": -0.0016681299385425863,
+            "upper": 0.004741000877963127
+          },
+          "95": {
+            "meanMaeReduction": 0.0011413520632133456,
+            "lower": -0.0016681299385425863,
+            "upper": 0.004741000877963127
+          },
+          "98": {
+            "meanMaeReduction": 0.0011413520632133456,
+            "lower": -0.001668129938542583,
+            "upper": 0.004741000877963134
+          },
+          "diesel": {
+            "meanMaeReduction": 0.0017559262510974587,
+            "lower": -0.0005267778753292235,
+            "upper": 0.0056189640035118485
+          }
+        },
+        "allFourPositiveLowerQuantile": -0.0016681299385425863
+      }
+    }
+  },
+  "policyFeatureAudit": {
+    "weeksWithComparablePolicyChange": 250,
+    "weeksWithCorrectedChangeValue": 188,
+    "policyWeeksWithoutKnownAdjacentChange": 115,
+    "correctedOriginExamples": [
+      {
+        "origin": "2022-01-17",
+        "oldDelta": 0.0,
+        "correctedDelta": 0.19999999999999998
+      },
+      {
+        "origin": "2022-01-24",
+        "oldDelta": 0.0,
+        "correctedDelta": 0.2
+      },
+      {
+        "origin": "2022-01-31",
+        "oldDelta": 0.0,
+        "correctedDelta": 0.19999999999999996
+      },
+      {
+        "origin": "2022-02-14",
+        "oldDelta": 0.0,
+        "correctedDelta": -0.7
+      },
+      {
+        "origin": "2022-02-21",
+        "oldDelta": 0.0,
+        "correctedDelta": 0.09999999999999998
+      },
+      {
+        "origin": "2022-02-28",
+        "oldDelta": 0.0,
+        "correctedDelta": 2.3
+      },
+      {
+        "origin": "2022-03-07",
+        "oldDelta": 0.0,
+        "correctedDelta": 1.6999999999999997
+      },
+      {
+        "origin": "2022-03-14",
+        "oldDelta": 0.0,
+        "correctedDelta": 2.6000000000000005
+      }
+    ],
+    "noFutureTargetAnnouncements": true,
+    "signedAndroidInterfaceUnchanged": true,
+    "comparedPriorVersion": "7ba389f2ee06ac41ce8ebd863a5612036fd4c215"
+  }
+}
