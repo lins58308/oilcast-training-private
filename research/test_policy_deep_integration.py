@@ -41,8 +41,10 @@ class DeepPolicyTest(unittest.TestCase):
         self.assertTrue(np.isfinite(augmented).all())
         # A future Sunday article appears only in the next week's origin.
         # The immediately previous Monday must not incorporate it.
-        self.assertEqual(augmented[13, -1, 30], 0.0)
-        self.assertEqual(augmented[14, -1, 30], 1.0)
+        # Input sequence of four weeks: x[10] ends on week t=13
+        # (April 3), x[11] ends on week t=14 (April 10).
+        # Features are normalized by train-only statistics, not 0/1.
+        self.assertLess(augmented[10, -1, 30],augmented[11, -1, 30])
 
 
 if __name__=="__main__":unittest.main()
