@@ -44,6 +44,27 @@ class OfficialDailyOilTest(unittest.TestCase):
         later,_=point_in_time_weekly([asof("2010-02-15")],source)
         self.assertEqual(earlier,later)
 
+    def test_saturday_nowcast_before_target_sunday_notice(self):
+        source=parse_moea_daily(csv_example())
+        monday=asof("2010-02-15")
+        monday["targetDate"]="2010-02-22"
+        early,_=point_in_time_weekly([monday],source)
+        late,_=point_in_time_weekly([monday],source,forecast_offset_days=5)
+        self.assertNotEqual(early,late)
+        self.assertEqual(late[0][0],1.)
+        # Saturday Feb 20 as-of with 3-day embargo can see no later
+        # than Wednesday Feb 17. Friday and target-week prices are future.
+        source[dt.date(2010,2,18)]=(20.,300.,400.)
+        source[dt.date(2010,2,19)]=(20.,300.,400.)
+        source[dt.date(2010,2,22)]=(20.,300.,400.)
+        unchanged,_=point_in_time_weekly([monday],source,forecast_offset_days=5)
+        self.assertEqual(late,unchanged)
+        source[dt.date(2010,2,17)]=(20.,300.,400.)
+        changed,_=point_in_time_weekly([monday],source,forecast_offset_days=5)
+        self.assertNotEqual(late,changed)
+        with self.assertRaises(ValueError):
+            point_in_time_weekly([monday],source,forecast_offset_days=6)
+
     def test_known_negative_wti_and_missing_dubai(self):
         rows=csv_example().splitlines()
         wti=["20200420,-37.63,61,64," if r.startswith("20200420,") else r for r in rows]
