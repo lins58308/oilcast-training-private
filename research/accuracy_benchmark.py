@@ -12,12 +12,13 @@ import pathlib
 from datetime import date
 import numpy as np
 from catboost import CatBoostRegressor, CatBoostClassifier
+from dubai_proxy import parse_dubai_csv, lagged_dubai_features
 
 SEED = 20261103
 FUEL_NAMES = ("92", "95", "98", "diesel")
 
 
-def make_week_data(data):
+def make_week_data(data, dubai_monthly=None):
     if data.get("schema") != 1 or data.get("featureDimension") != 26:
         raise ValueError("Unexpected research dataset schema")
     weeks = data["examples"]
@@ -45,8 +46,10 @@ def make_week_data(data):
         if k:
             flat_streak[k] = np.where(np.abs(y[k-1]) < .049,
                                      np.minimum(52, flat_streak[k-1]+1), 0)
-    oil_trends = num[:, :, 10:18]
-    news_trends = num[:, :, 18:26]
+    dubai_added = 0
+    dubai_vectors = None
+    if dubai_monthly is not None:
+        dubai_vectors, dubai_added = lagged_dubai_features(weeks, dubai_monthly)
     features = []
     for k in range(n):
         line = []
@@ -57,10 +60,14 @@ def make_week_data(data):
                  flat_streak[k, f], flat_streak[k, 1],
                  int(date.fromisoformat(weeks[k]["origin"]).year >= 2007),
                  int(date.fromisoformat(weeks[k]["origin"]).year >= 2020)]))
+            if dubai_vectors is not None:
+                # Extends research features ONLY, never the signed Android
+                # schema. Each month is embargoed until +75d after close.
+                common = np.concatenate((common, dubai_vectors[k]))
             line.append(common)
         features.append(line)
     x = np.asarray(features, dtype=np.float32)
-    return x, y, weeks
+    return x, y, weeks, dubai_added
 
 
 def scoring(actual, delta):
@@ -95,10 +102,16 @@ def train_predict(x, y, train_end, predict_start, predict_end, family, depth=4, 
         selected = list(range(18)) + list(range(26, 34))
     elif family in ("all", "hurdle"):
         selected = list(range(34))
+    elif family == "market-dubai":
+        selected = list(range(18)) + list(range(26, 39))
+    elif family == "all-dubai":
+        selected = list(range(39))
+    elif family == "hurdle-dubai":
+        selected = list(range(39))
     else:
         raise ValueError("Unknown family")
     source, query = source[:,selected],query[:,selected]
-    if family == "hurdle":
+    if family in ("hurdle", "hurdle-dubai"):
         active = (np.abs(labels) >= .049).astype(int)
         classifier = CatBoostClassifier(
             iterations=iterations,depth=depth,learning_rate=.035,
@@ -141,15 +154,17 @@ def predict_family(x,y,start,end,family):
 def main():
     p=argparse.ArgumentParser()
     p.add_argument("--dataset",required=True)
+    p.add_argument("--dubai-csv",default=None,help="Verified FRED monthly Dubai CSV; research only")
     p.add_argument("--output",default="output/accuracy-lab")
     p.add_argument("--variant",choices=("v6","v7"),required=True)
     args=p.parse_args()
     data=json.loads(pathlib.Path(args.dataset).read_text())
-    x,y,rows=make_week_data(data)
+    dubai = parse_dubai_csv(pathlib.Path(args.dubai_csv).read_text()) if args.dubai_csv else None
+    x,y,rows,dubai_added=make_week_data(data,dubai)
     n=len(x)
     audit=n-13
     # 3 pre-audit periods, spaced across different historical regimes.
-    offsets=(156,104,52)
+    offsets=(260,208,156,104,52)
     folds=[]
     for gap in offsets:
         end=audit-gap
@@ -162,6 +177,8 @@ def main():
     # ML changes rather than assume crude moves translate to retail.
     families=("price","market","all","hurdle",
               "price-gated4","price-gated8","market-gated4","market-gated8")
+    if dubai is not None:
+        families += ("market-dubai", "all-dubai", "hurdle-dubai")
     history={}
     for family in families:
         vals=[]
@@ -181,7 +198,7 @@ def main():
     improved={f:sum(p["scores"]["mae"]+.01<baseline_val[k]["scores"]["mae"]
                     for k,p in enumerate(history[f])) for f in families}
     ranked=[f for f in families if mean_val[f]+.01 < base_mae
-            and improved[f]>=2]
+            and improved[f] >= max(2,math.ceil(0.6*len(folds)))]
     choice=min(ranked,key=lambda f:mean_val[f]) if ranked else "flat"
     # Holdout never participates in selection.
     holdout={}
@@ -191,6 +208,10 @@ def main():
     holdout["flat"]=scoring(y[audit:],np.zeros_like(y[audit:]))
     report={"schema":1,"variant":args.variant,"status":"research-only",
         "noAutomaticPromotion":True,"totalWeeklyExamples":n,
+        "monthlyDubaiDataUsed": dubai is not None,
+        "monthlyDubaiAvailableWeekCount": dubai_added,
+        "DubaiEmbargoDaysAfterMonthEnd": 75,
+        "monthlyDubaiIsNOTOfficialCpc7D3B": True,
         "timePointGuarantee":"all stories are published and available at or before origin",
         "modelFamily":"pooled CatBoost; optional zero-inflated change/no-change",
         "historicalFolds":history,"historicalBaseline":baseline_val,
@@ -199,11 +220,12 @@ def main():
         "selectedUsingEarlierFoldsOnly":choice,
         "lockedFinal13Weeks":{"start":rows[audit]["targetDate"],
             "end":rows[-1]["targetDate"],"scores":holdout},
-        "warning":"News features are metadata; absence before archive coverage is NOT proof of no wars or no supply events. Historical FRED series are not point-in-time vintages."}
+        "warning":"News features are metadata; absence before archive coverage is NOT proof of no wars or no supply events. Historical FRED monthly Dubai values are retrospectively revised, not verified as-of publication vintages; 75-day embargo is an approximation."}
     o=pathlib.Path(args.output);o.mkdir(parents=True,exist_ok=True)
     (o/"accuracy-report.json").write_text(json.dumps(report,ensure_ascii=False,indent=2))
     print(json.dumps({"status":"complete","version":args.variant,"weeks":n,
         "baselineVal":base_mae,"candidateVal":mean_val,
+        "dubaiAvailableWeeks":dubai_added, "earlierFolds":len(folds),
         "improvedFolds":improved,"selected":choice,
         "locked13WeekMAE":{k:round(v["mae"],4) for k,v in holdout.items()},
         "output":str(o/"accuracy-report.json")},ensure_ascii=False),flush=True)
