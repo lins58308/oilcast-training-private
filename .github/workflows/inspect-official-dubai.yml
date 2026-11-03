@@ -1,0 +1,35 @@
+name: Inspect MOEA official Dubai weekly open data (read-only)
+'on':
+  push:
+    branches:
+      - feat/v6-dubai-point-in-time-20261103
+permissions:
+  contents: read
+jobs:
+  inspect:
+    if: contains(github.event.head_commit.message, '[inspect-official]')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Fetch official Dubai/Brent open data and inspect header/shape
+        run: |
+          curl --fail --location --silent --show-error --retry 3 --max-time 60 \
+            'https://www2.moeaea.gov.tw/oil111/csv/GlobalOilOpenData.csv' \
+            --output "$RUNNER_TEMP/moea.csv"
+          python3 - <<'PY'
+          import csv,io,pathlib,collections
+          raw=pathlib.Path(__import__('os').environ['RUNNER_TEMP'],'moea.csv').read_bytes()
+          print('ORIGINAL CSV BYTES',len(raw))
+          for enc in ('utf-8-sig','utf-8','cp950'):
+            try:
+              text=raw.decode(enc)
+              print('ENCODING',enc)
+              break
+            except UnicodeError:continue
+          else:raise ValueError('Unknown encoding')
+          parsed=list(csv.reader(io.StringIO(text)))
+          print('HEADER',repr(parsed[0]))
+          print('DATA ROWS',len(parsed)-1)
+          for row in (parsed[1:5]+parsed[-5:]):
+            print('SAMPLE',repr(row))
+          PY
