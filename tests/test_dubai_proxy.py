@@ -17,7 +17,8 @@ def week(d):
     v=[0.0]*26
     v[10]=2.0
     v[12]=3.0
-    return {"cutoff":d+"T00:00:00Z","features":[v]*4}
+    utc=(dt.date.fromisoformat(d)-dt.timedelta(days=1)).isoformat()
+    return {"origin":d,"cutoff":utc+"T16:00:00Z","features":[v]*4}
 
 
 class DubaiPointInTimeTest(unittest.TestCase):
