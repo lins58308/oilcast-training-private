@@ -51,7 +51,12 @@ def parse_moea_daily(raw):
     return data
 
 
-def point_in_time_weekly(weeks, observed):
+def point_in_time_weekly(weeks, observed, forecast_offset_days=0):
+    # Two distinct products, never scored as if they had equal lead time:
+    # Monday = early forecast 7 days out; Saturday = late nowcast 2 days out.
+    # Saturday remains BEFORE CPC's official Sunday-noon target notice.
+    if forecast_offset_days not in (0,5):
+        raise ValueError("Only Monday-early and Saturday-before-announcement allowed")
     """Seven research-only features; never use the target week's prices.
 
     A CPC origin is Monday midnight Taipei. Latest permitted raw price
@@ -63,7 +68,12 @@ def point_in_time_weekly(weeks, observed):
     observations=sorted(observed.items())
     for item in weeks:
         # Convert local CPC Monday, NOT preceding UTC Sunday.
-        cutoff=dt.date.fromisoformat(item["origin"])
+        origin=dt.date.fromisoformat(item["origin"])
+        if origin.weekday()!=0:
+            raise ValueError("CPC weekly origin must be Monday in Taiwan")
+        cutoff=origin+dt.timedelta(days=forecast_offset_days)
+        if item.get("targetDate") and cutoff>=dt.date.fromisoformat(item["targetDate"])-dt.timedelta(days=1):
+            raise ValueError("Future target Sunday announcement would leak into features")
         latest=cutoff-dt.timedelta(days=3)
         earlier=latest-dt.timedelta(days=7)
         oldest=earlier-dt.timedelta(days=7)
