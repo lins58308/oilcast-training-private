@@ -49,10 +49,11 @@ candidate improvement is not production promotion.
 4. **Fit competing candidates on past observations:** v6 uses an unchanged-price baseline plus historical-price and
    multi-source ridge/regression alternatives; v7 additionally fits
    a compact deterministic neural net. All four fuels are evaluated separately.
-5. **Time-ordered model comparison:** rolling-origin validation, then a later
-   13-week audit. v6's existing 13-week activation gate is not an unbiased
-   held-out estimate; v7 uses the earlier 39-week validation for selection,
-   leaving the final 13 weeks untouched for audit.
+5. **Time-ordered model comparison:** v6 selects using two earlier,
+   non-overlapping 39-week rolling-origin validation windows; v7 uses the
+   earlier 39-week validation. Neither version uses the final 13 weeks for
+   activation. Research has already inspected the 2026 audit repeatedly;
+   that research period is diagnostic, not a new blind performance estimate.
 6. **Inspect accuracy, not only job success:** compare MAE and RMSE with an
    unchanged-price baseline; separately report direction accuracy, recall when
    CPC actually changes prices, and the false-change rate. The neural candidate
