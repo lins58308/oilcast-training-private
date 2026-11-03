@@ -49,9 +49,25 @@ def normalize_policy(payload):
     return [times[i] for i in indices],[sanitized[i] for i in indices]
 
 
+def publication_week_indices(weeks, index, limit=53):
+    """Latest notice per consecutive publication week; stop at a missing week."""
+    if not 0<=index<len(weeks) or limit<1:
+        raise ValueError("Invalid policy publication history index")
+    selected=[index]
+    if limit==1:return selected
+    for j in range(index-1,-1,-1):
+        if weeks[j] != weeks[selected[-1]]:
+            if weeks[selected[-1]]-weeks[j] != dt.timedelta(days=7):break
+            selected.append(j)
+            if len(selected)==limit:break
+    return selected
+
+
 def feature_for_period(rows, payload, max_age=18):
     if not 7<=max_age<=28:raise ValueError("Source stale limit must be 7–28d")
     dates,notices=normalize_policy(payload)
+    published=[dt.date.fromisoformat(n['publishedDate']) for n in notices]
+    weeks=[d-dt.timedelta(days=d.weekday()) for d in published]
     output=[]
     covered=0
     for item in rows:
@@ -59,12 +75,13 @@ def feature_for_period(rows, payload, max_age=18):
         local_origin=dt.date.fromisoformat(item["origin"])
         # Weekly training cutoff must be the exact Monday start Taipei.
         expected=dt.datetime.combine(local_origin,dt.time(0),tzinfo=dt.timezone(dt.timedelta(hours=8)))
-        if cutoff!=expected:
+        if local_origin.weekday()!=0 or cutoff!=expected:
             raise ValueError("Policy origin is not CPC Monday 00:00 Asia/Taipei")
         ix=bisect.bisect_right(dates,cutoff)-1
         selected=None
         if ix>=0 and (cutoff-dates[ix]).total_seconds()<=max_age*86400:
             selected=notices[ix]
+        preceding=publication_week_indices(weeks,ix,8) if selected is not None else []
         per_fuel=[]
         for fuel in range(4):
             if selected is None:
@@ -78,20 +95,16 @@ def feature_for_period(rows, payload, max_age=18):
             freeze=bool(selected.get("bothFuelFrozen"))
             special=bool(selected.get("specialAbsorption"))
             holiday=bool(selected.get("holidayNoRise"))
-            # Historical previous notices only; never borrow a future
-            # target-week announcement. Consecutive freeze count is
-            # censored to a maximum of 8 previous CPC policy releases.
+            # Count unique consecutive publication weeks, not duplicate
+            # notices or apparent freezes across an unobserved week.
             streak=0
-            last_abs=absorption
-            old_abs=absorption
-            for j in range(ix,max(-1,ix-8),-1):
+            for j in preceding:
                 older=notices[j]
-                d=(dates[ix]-dates[j]).total_seconds()/86400
-                if d>70:break
                 if older.get("bothFuelFrozen"):streak+=1
                 else:break
-                if j<ix and old_abs==absorption:
-                    old_abs=older.get("absorption"+name)
+            # A repeated amount means zero weekly change. A changed-price
+            # week still has an absorption change; a missing week is masked.
+            old_abs=notices[preceding[1]].get("absorption"+name) if len(preceding)>1 else None
             absorption_change=0.
             if absorption is not None and old_abs is not None:
                 absorption_change=max(-30.,min(30.,absorption-old_abs))

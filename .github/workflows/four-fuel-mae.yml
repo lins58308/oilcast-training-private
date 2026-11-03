@@ -136,6 +136,10 @@ jobs:
           javac --release 11 -cp build/classes:build/json.jar -d build/classes research/SignedCoreMaeAudit.java
           java -Xmx2g -cp build/classes:build/json.jar SignedCoreMaeAudit \
             output/frozen/checkpoint.json output/signed-proposed.json 2026-11-03T02:00:00Z
+      - name: Compare relative-loss baseline challengers across continuous history
+        run: |
+          python3 research/baseline_challenger.py --inputs output/frozen \
+            --variant "$VARIANT" --output output/baseline-challenger --continuous-replay
       - name: Recover original unmodified trainer for a paired comparison
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
@@ -161,6 +165,7 @@ jobs:
           name: four-fuel-mae-results-${{ github.run_id }}
           path: |
             output/mae-trial/
+            output/baseline-challenger/
             output/signed-*.json
             output/frozen/manifest.json
           if-no-files-found: error
@@ -170,6 +175,7 @@ jobs:
           python3 - <<'PY'
           import json
           report=json.load(open('output/mae-trial/report.json'))
-          if not report['allFourHistoricalAuditGatesPassed']:
+          challenger=json.load(open('output/baseline-challenger/report.json'))
+          if not (report['allFourHistoricalAuditGatesPassed'] or challenger['allFourHistoricalAuditGatesPassed']):
               raise SystemExit('ACCURACY_GATE_NOT_MET: all four selected fuel heads must beat unchanged-price MAE by more than 0.01 TWD/L; see preserved per-fuel reasons. No promotion.')
           PY
