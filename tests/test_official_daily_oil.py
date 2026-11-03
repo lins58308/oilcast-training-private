@@ -44,6 +44,15 @@ class OfficialDailyOilTest(unittest.TestCase):
         later,_=point_in_time_weekly([asof("2010-02-15")],source)
         self.assertEqual(earlier,later)
 
+    def test_known_negative_wti_and_missing_dubai(self):
+        rows=csv_example().splitlines()
+        wti=["20200420,-37.63,61,64," if r.startswith("20200420,") else r for r in rows]
+        observations=parse_moea_daily("\n".join(wti))
+        self.assertAlmostEqual(observations[dt.date(2020,4,20)][0],-37.63)
+        incomplete=["20100212,25,N/A,27," if r.startswith("20100212,") else r for r in rows]
+        cleaned=parse_moea_daily("\n".join(incomplete))
+        self.assertNotIn(dt.date(2010,2,12),cleaned)
+
     def test_reject_bad_history(self):
         with self.assertRaises(ValueError):
             parse_moea_daily(csv_example().replace("布蘭特(美元/桶)","Brent"))
