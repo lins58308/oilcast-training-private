@@ -28,14 +28,18 @@ def parse_moea_daily(raw):
         if day in data:raise ValueError("Repeated MOEA crude observation date")
         prices=[]
         incomplete=False
-        for key in expected[1:4]:
+        for index,key in enumerate(expected[1:4]):
             s=row[key].strip()
             if s.upper() in ("N/A","NA","-",""):
                 incomplete=True
                 break
             try: p=float(s)
             except ValueError: raise ValueError("Unrecognized government crude price")
-            if not math.isfinite(p) or not 1<=p<=500:
+            # Cushing WTI futures famously settled below zero in April
+            # 2020. Do NOT discard true historical negative WTI quotes;
+            # Dubai/Brent must remain strictly positive.
+            minimum = -100 if index == 0 else 1
+            if not math.isfinite(p) or not minimum<=p<=1000:
                 raise ValueError("MOEA crude daily price outside valid range")
             prices.append(p)
         # Missing observations are not zero prices. Keep the gap and never
