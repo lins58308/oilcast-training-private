@@ -132,7 +132,15 @@ public final class MultiLearner {
             double[] row=a[c];a[c]=a[p];a[p]=row;double v=b[c];b[c]=b[p];b[p]=v;
             if(Math.abs(a[c][c])<1e-12)throw new IllegalArgumentException("多來源模型矩陣不可解");v=a[c][c];for(int k=c;k<P;k++)a[c][k]/=v;b[c]/=v;
             for(int i=0;i<P;i++)if(i!=c){v=a[i][c];for(int k=c;k<P;k++)a[i][k]-=v*a[c][k];b[i]-=v*b[c];}
-        }m.weights=b;for(int j=0;j<P;j++)m.intercept-=b[j]*zmean[j];d.fits.put(key,m);return m;
+        }m.weights=b;for(int j=0;j<P;j++)m.intercept-=b[j]*zmean[j];
+        if(family==4){
+            // Refine against the reported absolute-error objective. The
+            // previous "robust" candidate clipped X but still minimized MSE.
+            // All labeled weeks and their bounded recency base weights remain.
+            double[] robust=AbsoluteLoss.refine(x,y,sampleWeights,lambda,m.intercept,m.weights);
+            m.intercept=robust[0];System.arraycopy(robust,1,m.weights,0,P);
+        }
+        d.fits.put(key,m);return m;
     }
     public static Learner.Score evaluate(Data d,int f,int family,double lambda,int start,int end)throws Exception{
         return evaluate(d,f,family,lambda,start,end,ProgressListener.NONE,new int[]{0});
@@ -175,10 +183,11 @@ public final class MultiLearner {
             allFits[0]=fit(d,n-1,f,0,0);progress.update("fit",++done[0],4*WORK_PER_FUEL,f,0);
             comparisons.put(new JSONObject().put("family",0).put("name",FAMILY[0]).put("validationMae",validation[0]).put("validationObjective",validationObjective[0]).put("mae",gate[0].mae).put("eligible",true));
             for(int family=1;family<FAMILY.length;family++){
+                validation[family]=Double.POSITIVE_INFINITY;
                 validationObjective[family]=Double.POSITIVE_INFINITY;
                 for(double lambda:family==6?NEURAL_DECAYS:LAMBDAS){
                     Learner.Score s=evaluate(d,f,family,lambda,val,test,progress,done);
-                    if(objective(s)<validationObjective[family]){
+                    if(s.mae<validation[family]-1e-9 || Math.abs(s.mae-validation[family])<1e-9&&objective(s)<validationObjective[family]){
                         validation[family]=s.mae;validationObjective[family]=objective(s);bestLambda[family]=lambda;valScore[family]=s;
                     }
                 }
@@ -193,7 +202,9 @@ public final class MultiLearner {
                 if(eligible[family] && validation[family]+.01<validation[0]
                     &&valScore[family].direction>=valScore[0].direction-5
                     &&valScore[family].falseMoveRate<=25
-                    &&validationObjective[family]<validationObjective[candidate]-.001)candidate=family;
+                    &&(validation[family]+.005<validation[candidate]
+                       ||Math.abs(validation[family]-validation[candidate])<1e-9
+                         &&validationObjective[family]<validationObjective[candidate]-.001))candidate=family;
             }
             // The latest 13 weeks are a locked out-of-sample audit, never a selection gate.
             int active=candidate;

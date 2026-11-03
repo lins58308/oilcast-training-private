@@ -4,6 +4,11 @@ Both versions follow the same **time-safe public-data and signed-model pipeline*
 The model is not promised to forecast every price change. Passing integration tests
 means the pipeline is internally consistent, **not** that future forecasts are accurate.
 
+The [2026-11-03 MAE optimization](research/MAE-OPTIMIZATION-20261103.md)
+adds smooth absolute-error fitting, weekly-MAE neural optimization and an
+explicit four-fuel paired audit. Current all-four accuracy gates remain unmet;
+candidate improvement is not production promotion.
+
 ## Common sequence
 
 1. **Synchronize public observations:** CPC effective-date price-change events,
@@ -30,9 +35,9 @@ means the pipeline is internally consistent, **not** that future forecasts are a
   are retained even if CPC did not publish a new price-change event.
 - For the recent-weighted robust regression and v7 neural preprocessing /
   Adam optimization, each older sample gets a recency weight of **at least
-  0.5** of the newest unchanged week's base weight. Price-change emphasis
-  is applied on top of that floor for neural training, never in place of
-  inclusion.
+  0.5** of the newest week's base weight. Neural training now uses smooth absolute
+  loss without 2.5x changed-week oversampling, and unweighted validation MAE
+  for early stopping; all labeled weeks remain included.
 - The JSON `trainingSamples` records **all history after feature warm-up**,
   rather than a cap of 156. `ModelTrainingCoverageTest` changes an early
   (pre-156-week) CPC row and proves that the final fitted parameters change.

@@ -66,16 +66,17 @@ public final class NeuralLearner {
     }
     private static double[] sampleWeights(double[] y,int count){
         double[] weights=new double[count];
-        for(int i=0;i<count;i++)weights[i]=Math.max(.5,Math.pow(.5,(count-1-i)/26.0))*(Math.abs(y[i])>=.049?2.5:1);
+        // Reported MAE counts each observed week once. Oversampling changed
+        // labels by 2.5 optimized a different target from the reported weekly MAE.
+        for(int i=0;i<count;i++)weights[i]=Math.max(.5,Math.pow(.5,(count-1-i)/26.0));
         return weights;
     }
     private static double score(double[] p,double[][] x,double[] y,int start,int end){
-        Network model=new Network(p);double loss=0,weight=0;
+        Network model=new Network(p);double loss=0;
         for(int i=start;i<end;i++){
-            double w=Math.max(.5,Math.pow(.5,(end-1-i)/26.0))*(Math.abs(y[i])>=.049?2.5:1);
-            loss+=w*Math.abs(model.predict(x[i])-y[i]);weight+=w;
+            loss+=Math.abs(model.predict(x[i])-y[i]);
         }
-        return loss/Math.max(1e-9,weight);
+        return loss/Math.max(1,end-start);
     }
     private static void step(double[] p,double[] m,double[] v,double[][] x,double[] y,double[] weights,int count,double decay,int epoch){
         double[] grad=new double[SIZE];double total=0;
@@ -85,7 +86,10 @@ public final class NeuralLearner {
             for(int i=0;i<H1;i++){double t=p[B1+i];for(int j=0;j<INPUT;j++)t+=p[W1+i*INPUT+j]*z[j];a[i]=Math.tanh(t);}
             for(int i=0;i<H2;i++){double t=p[B2+i];for(int j=0;j<H1;j++)t+=p[W2+i*H1+j]*a[j];b[i]=Math.tanh(t);}
             double prediction=p[B3];for(int i=0;i<H2;i++)prediction+=p[W3+i]*b[i];
-            double d=2*w*Math.max(-2,Math.min(2,prediction-y[row]));grad[B3]+=d;
+            // Smooth absolute loss: bounded residual influence, matching
+            // the unweighted MAE used for chronological early stopping.
+            double residual=prediction-y[row];
+            double d=w*residual/Math.sqrt(residual*residual+.01);grad[B3]+=d;
             double[] db=new double[H2],da=new double[H1];
             for(int i=0;i<H2;i++){grad[W3+i]+=d*b[i];db[i]=d*p[W3+i]*(1-b[i]*b[i]);grad[B2+i]+=db[i];}
             for(int i=0;i<H2;i++)for(int j=0;j<H1;j++){grad[W2+i*H1+j]+=db[i]*a[j];da[j]+=db[i]*p[W2+i*H1+j];}
