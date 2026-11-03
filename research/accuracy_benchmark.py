@@ -140,6 +140,11 @@ def train_predict(x, y, train_end, predict_start, predict_end, family, depth=4, 
 
 
 def predict_family(x,y,start,end,family):
+    if "-shrink" in family:
+        base, shrink = family.split("-shrink")
+        if shrink not in ("25", "50", "75"):
+            raise ValueError("Unapproved forecast shrinkage")
+        return train_predict(x,y,start,start,end,base) * (int(shrink)/100)
     if "-gated" not in family:
         return train_predict(x,y,start,start,end,family)
     base, threshold = family.split("-gated")
@@ -176,7 +181,9 @@ def main():
     # If a long run of unchanged prices has occurred, suppress small
     # ML changes rather than assume crude moves translate to retail.
     families=("price","market","all","hurdle",
-              "price-gated4","price-gated8","market-gated4","market-gated8")
+              "price-gated4","price-gated8","market-gated4","market-gated8",
+              "price-shrink25","price-shrink50","market-shrink25",
+              "market-shrink50","all-shrink50")
     if dubai is not None:
         families += ("market-dubai", "all-dubai", "hurdle-dubai")
     history={}
