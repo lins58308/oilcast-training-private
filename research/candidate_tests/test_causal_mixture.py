@@ -1,7 +1,7 @@
 """CPC gasoline-shared, diesel-independent causal MAE regression tests."""
 import sys
 from pathlib import Path
-sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"research"))
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 import unittest
 import numpy as np
 from causal_mixture_benchmark import (
