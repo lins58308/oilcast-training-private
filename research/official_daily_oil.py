@@ -62,7 +62,8 @@ def point_in_time_weekly(weeks, observed):
     covered=0
     observations=sorted(observed.items())
     for item in weeks:
-        cutoff=dt.date.fromisoformat(item["cutoff"][:10])
+        # Convert local CPC Monday, NOT preceding UTC Sunday.
+        cutoff=dt.date.fromisoformat(item["origin"])
         latest=cutoff-dt.timedelta(days=3)
         earlier=latest-dt.timedelta(days=7)
         oldest=earlier-dt.timedelta(days=7)
