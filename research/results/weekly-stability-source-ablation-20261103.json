@@ -1,0 +1,282 @@
+{
+  "schema": 1,
+  "fixedCodeAndLabels": true,
+  "riskOnlyRun": 41588057452,
+  "comparison": "706 first-seen Friday risk samples versus same samples plus 32 dated CPC retail neighbor tables",
+  "variants": {
+    "v6": {
+      "identicalCarryForecasts": true,
+      "candidateComparisons": {
+        "robust-enriched": {
+          "92": {
+            "riskOnlyRecent39Mae": 0.3846153846153847,
+            "withNeighborsRecent39Mae": 0.4025641025641022,
+            "riskOnlyAudit13Mae": 0.12307692307692292,
+            "withNeighborsAudit13Mae": 0.14615384615384633
+          },
+          "95": {
+            "riskOnlyRecent39Mae": 0.3846153846153847,
+            "withNeighborsRecent39Mae": 0.40256410256410247,
+            "riskOnlyAudit13Mae": 0.12307692307692318,
+            "withNeighborsAudit13Mae": 0.14615384615384494
+          },
+          "98": {
+            "riskOnlyRecent39Mae": 0.38461538461538436,
+            "withNeighborsRecent39Mae": 0.4025641025641022,
+            "riskOnlyAudit13Mae": 0.12307692307692318,
+            "withNeighborsAudit13Mae": 0.14615384615384494
+          },
+          "diesel": {
+            "riskOnlyRecent39Mae": 0.3461538461538467,
+            "withNeighborsRecent39Mae": 0.38461538461538497,
+            "riskOnlyAudit13Mae": 0.13076923076923017,
+            "withNeighborsAudit13Mae": 0.14615384615384577
+          }
+        },
+        "absolute-enriched": {
+          "92": {
+            "riskOnlyRecent39Mae": 0.32307692307692254,
+            "withNeighborsRecent39Mae": 0.32307692307692254,
+            "riskOnlyAudit13Mae": 0.053846153846153794,
+            "withNeighborsAudit13Mae": 0.053846153846153794
+          },
+          "95": {
+            "riskOnlyRecent39Mae": 0.32307692307692276,
+            "withNeighborsRecent39Mae": 0.32307692307692276,
+            "riskOnlyAudit13Mae": 0.053846153846154064,
+            "withNeighborsAudit13Mae": 0.053846153846154064
+          },
+          "98": {
+            "riskOnlyRecent39Mae": 0.32307692307692293,
+            "withNeighborsRecent39Mae": 0.32307692307692293,
+            "riskOnlyAudit13Mae": 0.053846153846154064,
+            "withNeighborsAudit13Mae": 0.053846153846154064
+          },
+          "diesel": {
+            "riskOnlyRecent39Mae": 0.2846153846153848,
+            "withNeighborsRecent39Mae": 0.2846153846153848,
+            "riskOnlyAudit13Mae": 0.04615384615384599,
+            "withNeighborsAudit13Mae": 0.04615384615384599
+          }
+        },
+        "regime-enriched": {
+          "92": {
+            "riskOnlyRecent39Mae": 0.36666666666666653,
+            "withNeighborsRecent39Mae": 0.36666666666666653,
+            "riskOnlyAudit13Mae": 0.14615384615384633,
+            "withNeighborsAudit13Mae": 0.14615384615384633
+          },
+          "95": {
+            "riskOnlyRecent39Mae": 0.3666666666666666,
+            "withNeighborsRecent39Mae": 0.3666666666666666,
+            "riskOnlyAudit13Mae": 0.14615384615384605,
+            "withNeighborsAudit13Mae": 0.14615384615384605
+          },
+          "98": {
+            "riskOnlyRecent39Mae": 0.3666666666666663,
+            "withNeighborsRecent39Mae": 0.3666666666666663,
+            "riskOnlyAudit13Mae": 0.14615384615384605,
+            "withNeighborsAudit13Mae": 0.14615384615384605
+          },
+          "diesel": {
+            "riskOnlyRecent39Mae": 0.3230769230769234,
+            "withNeighborsRecent39Mae": 0.3230769230769234,
+            "riskOnlyAudit13Mae": 0.11538461538461484,
+            "withNeighborsAudit13Mae": 0.11538461538461484
+          }
+        },
+        "policy-enriched": {
+          "92": {
+            "riskOnlyRecent39Mae": 0.31538461538461543,
+            "withNeighborsRecent39Mae": 0.31538461538461543,
+            "riskOnlyAudit13Mae": 0.06153846153846159,
+            "withNeighborsAudit13Mae": 0.06153846153846159
+          },
+          "95": {
+            "riskOnlyRecent39Mae": 0.3153846153846155,
+            "withNeighborsRecent39Mae": 0.3153846153846155,
+            "riskOnlyAudit13Mae": 0.06153846153846187,
+            "withNeighborsAudit13Mae": 0.06153846153846187
+          },
+          "98": {
+            "riskOnlyRecent39Mae": 0.3153846153846156,
+            "withNeighborsRecent39Mae": 0.3153846153846156,
+            "riskOnlyAudit13Mae": 0.06153846153846187,
+            "withNeighborsAudit13Mae": 0.06153846153846187
+          },
+          "diesel": {
+            "riskOnlyRecent39Mae": 0.28461538461538466,
+            "withNeighborsRecent39Mae": 0.28461538461538466,
+            "riskOnlyAudit13Mae": 0.06153846153846105,
+            "withNeighborsAudit13Mae": 0.06153846153846105
+          }
+        },
+        "mixture-enriched": {
+          "92": {
+            "riskOnlyRecent39Mae": 0.3179487179487177,
+            "withNeighborsRecent39Mae": 0.3179487179487177,
+            "riskOnlyAudit13Mae": 0.053846153846153794,
+            "withNeighborsAudit13Mae": 0.053846153846153794
+          },
+          "95": {
+            "riskOnlyRecent39Mae": 0.31794871794871793,
+            "withNeighborsRecent39Mae": 0.31794871794871793,
+            "riskOnlyAudit13Mae": 0.053846153846154064,
+            "withNeighborsAudit13Mae": 0.053846153846154064
+          },
+          "98": {
+            "riskOnlyRecent39Mae": 0.317948717948718,
+            "withNeighborsRecent39Mae": 0.317948717948718,
+            "riskOnlyAudit13Mae": 0.053846153846154064,
+            "withNeighborsAudit13Mae": 0.053846153846154064
+          },
+          "diesel": {
+            "riskOnlyRecent39Mae": 0.27179487179487183,
+            "withNeighborsRecent39Mae": 0.27179487179487183,
+            "riskOnlyAudit13Mae": 0.04615384615384599,
+            "withNeighborsAudit13Mae": 0.04615384615384599
+          }
+        }
+      },
+      "riskOnlyAllFourPassed": false,
+      "withNeighborsAllFourPassed": false
+    },
+    "v7": {
+      "identicalCarryForecasts": true,
+      "candidateComparisons": {
+        "robust-enriched": {
+          "92": {
+            "riskOnlyRecent39Mae": 0.3871794871794873,
+            "withNeighborsRecent39Mae": 0.39999999999999947,
+            "riskOnlyAudit13Mae": 0.14615384615384633,
+            "withNeighborsAudit13Mae": 0.14615384615384633
+          },
+          "95": {
+            "riskOnlyRecent39Mae": 0.38717948717948747,
+            "withNeighborsRecent39Mae": 0.3999999999999997,
+            "riskOnlyAudit13Mae": 0.1461538461538455,
+            "withNeighborsAudit13Mae": 0.14615384615384494
+          },
+          "98": {
+            "riskOnlyRecent39Mae": 0.38717948717948714,
+            "withNeighborsRecent39Mae": 0.3999999999999994,
+            "riskOnlyAudit13Mae": 0.1461538461538455,
+            "withNeighborsAudit13Mae": 0.14615384615384494
+          },
+          "diesel": {
+            "riskOnlyRecent39Mae": 0.3461538461538466,
+            "withNeighborsRecent39Mae": 0.3769230769230772,
+            "riskOnlyAudit13Mae": 0.13846153846153825,
+            "withNeighborsAudit13Mae": 0.14615384615384605
+          }
+        },
+        "absolute-enriched": {
+          "92": {
+            "riskOnlyRecent39Mae": 0.32051282051282004,
+            "withNeighborsRecent39Mae": 0.32051282051282004,
+            "riskOnlyAudit13Mae": 0.053846153846153794,
+            "withNeighborsAudit13Mae": 0.053846153846153794
+          },
+          "95": {
+            "riskOnlyRecent39Mae": 0.32051282051282026,
+            "withNeighborsRecent39Mae": 0.32051282051282026,
+            "riskOnlyAudit13Mae": 0.053846153846154064,
+            "withNeighborsAudit13Mae": 0.053846153846154064
+          },
+          "98": {
+            "riskOnlyRecent39Mae": 0.32051282051282043,
+            "withNeighborsRecent39Mae": 0.32051282051282043,
+            "riskOnlyAudit13Mae": 0.053846153846154064,
+            "withNeighborsAudit13Mae": 0.053846153846154064
+          },
+          "diesel": {
+            "riskOnlyRecent39Mae": 0.2820512820512823,
+            "withNeighborsRecent39Mae": 0.2820512820512823,
+            "riskOnlyAudit13Mae": 0.04615384615384599,
+            "withNeighborsAudit13Mae": 0.04615384615384599
+          }
+        },
+        "regime-enriched": {
+          "92": {
+            "riskOnlyRecent39Mae": 0.3641025641025642,
+            "withNeighborsRecent39Mae": 0.3641025641025642,
+            "riskOnlyAudit13Mae": 0.14615384615384605,
+            "withNeighborsAudit13Mae": 0.14615384615384605
+          },
+          "95": {
+            "riskOnlyRecent39Mae": 0.36410256410256425,
+            "withNeighborsRecent39Mae": 0.36410256410256425,
+            "riskOnlyAudit13Mae": 0.14615384615384605,
+            "withNeighborsAudit13Mae": 0.14615384615384605
+          },
+          "98": {
+            "riskOnlyRecent39Mae": 0.3641025641025641,
+            "withNeighborsRecent39Mae": 0.3641025641025641,
+            "riskOnlyAudit13Mae": 0.14615384615384605,
+            "withNeighborsAudit13Mae": 0.14615384615384605
+          },
+          "diesel": {
+            "riskOnlyRecent39Mae": 0.31282051282051315,
+            "withNeighborsRecent39Mae": 0.31282051282051315,
+            "riskOnlyAudit13Mae": 0.11538461538461511,
+            "withNeighborsAudit13Mae": 0.11538461538461511
+          }
+        },
+        "policy-enriched": {
+          "92": {
+            "riskOnlyRecent39Mae": 0.3230769230769233,
+            "withNeighborsRecent39Mae": 0.3230769230769233,
+            "riskOnlyAudit13Mae": 0.0692307692307694,
+            "withNeighborsAudit13Mae": 0.0692307692307694
+          },
+          "95": {
+            "riskOnlyRecent39Mae": 0.3230769230769234,
+            "withNeighborsRecent39Mae": 0.3230769230769234,
+            "riskOnlyAudit13Mae": 0.06923076923076912,
+            "withNeighborsAudit13Mae": 0.06923076923076912
+          },
+          "98": {
+            "riskOnlyRecent39Mae": 0.3230769230769233,
+            "withNeighborsRecent39Mae": 0.3230769230769233,
+            "riskOnlyAudit13Mae": 0.06923076923076912,
+            "withNeighborsAudit13Mae": 0.06923076923076912
+          },
+          "diesel": {
+            "riskOnlyRecent39Mae": 0.27948717948717944,
+            "withNeighborsRecent39Mae": 0.27948717948717944,
+            "riskOnlyAudit13Mae": 0.04615384615384599,
+            "withNeighborsAudit13Mae": 0.04615384615384599
+          }
+        },
+        "mixture-enriched": {
+          "92": {
+            "riskOnlyRecent39Mae": 0.32051282051282043,
+            "withNeighborsRecent39Mae": 0.32051282051282043,
+            "riskOnlyAudit13Mae": 0.053846153846153794,
+            "withNeighborsAudit13Mae": 0.053846153846153794
+          },
+          "95": {
+            "riskOnlyRecent39Mae": 0.32051282051282043,
+            "withNeighborsRecent39Mae": 0.32051282051282043,
+            "riskOnlyAudit13Mae": 0.053846153846154064,
+            "withNeighborsAudit13Mae": 0.053846153846154064
+          },
+          "98": {
+            "riskOnlyRecent39Mae": 0.32051282051282043,
+            "withNeighborsRecent39Mae": 0.32051282051282043,
+            "riskOnlyAudit13Mae": 0.053846153846154064,
+            "withNeighborsAudit13Mae": 0.053846153846154064
+          },
+          "diesel": {
+            "riskOnlyRecent39Mae": 0.2794871794871794,
+            "withNeighborsRecent39Mae": 0.2794871794871794,
+            "riskOnlyAudit13Mae": 0.04615384615384599,
+            "withNeighborsAudit13Mae": 0.04615384615384599
+          }
+        }
+      },
+      "riskOnlyAllFourPassed": false,
+      "withNeighborsAllFourPassed": false
+    }
+  }
+}
