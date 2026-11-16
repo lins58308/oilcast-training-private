@@ -89,6 +89,31 @@ public final class NewsHistoryTrainingTest {
         for(int i=0;i<ContextData.DIM;i++)
             ok(Math.abs(present.values[i]-publicSnap.values[i])<1e-10,
                "full archive and projected live inference must agree on dimension "+i);
+        // More than 5,000 stories in one 28-day window used to abort every
+        // scheduled publication. The window is now reduced by an explicit
+        // priority rule, identically for cloud training and the Android payload.
+        JSONArray crowded=new JSONArray();
+        String[] crowdedSources={"BBC","EIA","Global maritime"};
+        for(int i=0;i<5600;i++){
+            String title=i%7==0?"OPEC oil production cut round "+i:i%7==1?"Crude oil market briefing "+i:"Local festival report "+i;
+            crowded.put(article(title,"https://www.bbc.com/news/crowded-"+i,crowdedSources[i%3],
+                Instant.parse("2026-10-10T00:00:00Z").plusSeconds(i*300L).toString(),
+                Instant.parse("2026-10-10T00:00:00Z").plusSeconds(i*300L+60).toString()));
+        }
+        JSONObject crowdedFull=ContextData.empty().put("news",ContextData.mergeNews(new JSONArray(),crowded));
+        JSONObject crowdedPublic=ContextData.publicationView(crowdedFull,Instant.parse(now));
+        JSONObject selection=crowdedPublic.getJSONObject("newsSelection");
+        ok(crowdedPublic.getJSONArray("news").length()==ContextData.MAX_PUBLIC_NEWS,"crowded window is reduced to the Android limit instead of failing");
+        ok(selection.getBoolean("reduced")&&selection.getInt("windowCount")==5600&&selection.getInt("publishedCount")==5000,"reduction is reported, not silent");
+        ok(selection.getInt("omittedEvent")==0&&selection.getInt("omittedRelevant")==0&&selection.getInt("omittedGeneral")==600,"only general news is dropped while event and oil stories all fit");
+        ok(crowdedFull.getJSONArray("news").length()==5600,"training archive keeps every story");
+        ContextData.Snapshot crowdedCloud=new ContextData(crowdedFull).snapshot(Instant.parse(now));
+        ContextData.Snapshot crowdedApp=new ContextData(crowdedPublic).snapshot(Instant.parse(now));
+        ok(crowdedCloud.count==crowdedApp.count&&crowdedCloud.articles.length()<=ContextData.MAX_PUBLIC_NEWS,"cloud and App count the same bounded stories");
+        for(int i=0;i<ContextData.DIM;i++)
+            ok(crowdedCloud.values[i]==crowdedApp.values[i],"crowded-window features are bit-identical on dimension "+i);
+        ok(ContextData.publicationView(crowdedPublic,Instant.parse(now)).getJSONArray("news").toString().equals(crowdedPublic.getJSONArray("news").toString()),"selection is idempotent");
+        ok(!ContextData.publicationView(full,Instant.parse(now)).getJSONObject("newsSelection").getBoolean("reduced"),"small windows are published unchanged");
         ContextData.Snapshot beforePublished=ctx.snapshot(Instant.parse("2026-11-02T12:00:00Z"));
         ok(beforePublished.count==3,"future news cannot leak into historical prediction");
         // A headline discovered long after it was written cannot be treated

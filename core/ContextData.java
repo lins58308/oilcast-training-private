@@ -294,20 +294,55 @@ public final class ContextData {
     /** Training checkpoint keeps the full dated news archive. Only the articles
      *  needed to reconstruct today's inference features are placed in the
      *  size-limited signed Android download. Never use this projection to train. */
+    /** Importance tier of a headline, derived only from its title so the
+     *  cloud archive and the Android projection always agree:
+     *  0 = asserts one of the six oil-economy events, 1 = oil/energy relevant,
+     *  2 = general news that only contributes to volume. */
+    public static int tier(String title)throws JSONException{
+        if(!RELEVANT.matcher(title).find())return 2;
+        return topics(title).length()>0?0:1;
+    }
+    /** Deterministic, explicit selection used when one 28-day window holds more
+     *  stories than the signed Android package may carry. Keeps event stories
+     *  first, then relevant ones, then general news; newest first inside a tier
+     *  and the stable id as the final tie-break. Returns null when every story
+     *  fits. Selecting an already selected set returns the same set, so the
+     *  App reproduces the cloud features exactly from the published subset. */
+    private static Set<String> selectIds(List<String> ids,List<Instant> published,List<Integer> tiers){
+        if(ids.size()<=MAX_PUBLIC_NEWS)return null;
+        Integer[] order=new Integer[ids.size()];for(int i=0;i<order.length;i++)order[i]=i;
+        Arrays.sort(order,(a,b)->{
+            int c=Integer.compare(tiers.get(a),tiers.get(b));if(c!=0)return c;
+            c=published.get(b).compareTo(published.get(a));if(c!=0)return c;
+            return ids.get(a).compareTo(ids.get(b));});
+        Set<String> keep=new HashSet<>();for(int i=0;i<MAX_PUBLIC_NEWS;i++)keep.add(ids.get(order[i]));return keep;
+    }
+    private static boolean inWindow(Instant published,Instant available,Instant asOf){
+        return !available.isAfter(asOf)&&!published.isAfter(asOf)&&published.isAfter(asOf.minusSeconds(NEWS_WINDOW_DAYS*86400L));
+    }
+    /** Training checkpoint keeps the full dated news archive. Only the articles
+     *  needed to reconstruct today's inference features are placed in the
+     *  size-limited signed Android download. Never use this projection to train.
+     *  A window above the Android limit is reduced by the same documented
+     *  priority rule that {@link #snapshot} applies, and the reduction is
+     *  reported in "newsSelection" instead of failing or clipping silently. */
     public static JSONObject publicationView(JSONObject history,Instant asOf)throws Exception{
-        JSONObject result=new JSONObject(history.toString()),original=history;
-        JSONArray archive=original.getJSONArray("news"),recent=new JSONArray();
-        Instant oldest=asOf.minusSeconds(NEWS_WINDOW_DAYS*86400L);
+        JSONObject result=new JSONObject(history.toString());
+        JSONArray archive=history.getJSONArray("news"),recent=new JSONArray();
+        List<JSONObject> window=new ArrayList<>();List<String> ids=new ArrayList<>();List<Instant> dates=new ArrayList<>();List<Integer> tiers=new ArrayList<>();
         for(int i=0;i<archive.length();i++){
-            JSONObject a=archive.getJSONObject(i);
-            Instant published=Instant.parse(a.getString("publishedAt"));
-            Instant available=Instant.parse(a.getString("availableAt"));
-            if(!published.isAfter(oldest)&&!published.equals(oldest))continue;
-            if(published.isAfter(asOf)||available.isAfter(asOf))continue;
-            recent.put(a);
+            JSONObject a=archive.getJSONObject(i);Instant published=Instant.parse(a.getString("publishedAt"));
+            if(!inWindow(published,Instant.parse(a.getString("availableAt")),asOf))continue;
+            window.add(a);ids.add(a.getString("id"));dates.add(published);tiers.add(tier(a.getString("title")));
         }
-        if(recent.length()>MAX_PUBLIC_NEWS)throw new IOException("Recent news exceeds public Android model limit; no silent clipping");
-        result.put("news",recent);return result;
+        Set<String> keep=selectIds(ids,dates,tiers);int[] omitted=new int[3];
+        // Archive order is preserved so floating-point feature sums are identical.
+        for(int i=0;i<window.size();i++){if(keep==null||keep.contains(ids.get(i)))recent.put(window.get(i));else omitted[tiers.get(i)]++;}
+        result.put("news",recent).put("newsSelection",new JSONObject().put("windowDays",NEWS_WINDOW_DAYS).put("windowCount",window.size())
+            .put("publishedCount",recent.length()).put("limit",MAX_PUBLIC_NEWS).put("reduced",keep!=null)
+            .put("omittedEvent",omitted[0]).put("omittedRelevant",omitted[1]).put("omittedGeneral",omitted[2])
+            .put("rule","event stories, then oil/energy relevant, then general; newest first; stable id"));
+        return result;
     }
     public static String sha(String s)throws Exception{byte[] b=MessageDigest.getInstance("SHA-256").digest(s.getBytes(StandardCharsets.UTF_8));StringBuilder x=new StringBuilder();for(byte v:b)x.append(String.format(Locale.US,"%02x",v&255));return x.toString();}
     public static String download(String link)throws Exception{
@@ -404,14 +439,14 @@ public final class ContextData {
     }
 
     private static final class Market {LocalDate date;Instant available;double[] values;}
-    private static final class News {Instant published,available;JSONObject json;int[] topics;}
+    private static final class News {Instant published,available;JSONObject json;int[] topics;int tier;}
     private final List<Market> market=new ArrayList<>();private final List<News> news=new ArrayList<>();
     private final JSONObject raw;private final JSONArray coverage;private final Map<String,Snapshot> cache=new HashMap<>();
     public ContextData(JSONObject data)throws Exception{
         raw=data;coverage=data.getJSONArray("coverage");JSONArray m=data.getJSONArray("market"),a=data.getJSONArray("news");
         if(m.length()>16000||a.length()>MAX_TRAINING_NEWS)throw new IOException("本機資料超出容量上限");
         for(int i=0;i<m.length();i++){JSONObject j=m.getJSONObject(i);Market p=new Market();p.date=LocalDate.parse(j.getString("date"));p.available=Instant.parse(j.getString("availableAt"));p.values=new double[3];for(int k=0;k<3;k++)p.values[k]=j.getJSONArray("values").isNull(k)?Double.NaN:j.getJSONArray("values").getDouble(k);market.add(p);}
-        for(int i=0;i<a.length();i++){JSONObject j=new JSONObject(a.getJSONObject(i).toString());News p=new News();p.json=j;p.published=Instant.parse(j.getString("publishedAt"));p.available=Instant.parse(j.getString("availableAt"));JSONArray old=j.getJSONArray("topics");for(int k=0;k<old.length();k++)if(old.getInt(k)<0||old.getInt(k)>=6)throw new IOException("新聞事件類型錯誤");boolean relevant=RELEVANT.matcher(j.getString("title")).find();JSONArray t=relevant?topics(j.getString("title")):new JSONArray();j.put("topics",t).put("relevant",relevant).put("uncertain",uncertain(j.getString("title"))).put("classifierVersion",2);p.topics=new int[t.length()];for(int k=0;k<t.length();k++)p.topics[k]=t.getInt(k);news.add(p);}
+        for(int i=0;i<a.length();i++){JSONObject j=new JSONObject(a.getJSONObject(i).toString());News p=new News();p.json=j;p.published=Instant.parse(j.getString("publishedAt"));p.available=Instant.parse(j.getString("availableAt"));JSONArray old=j.getJSONArray("topics");for(int k=0;k<old.length();k++)if(old.getInt(k)<0||old.getInt(k)>=6)throw new IOException("新聞事件類型錯誤");boolean relevant=RELEVANT.matcher(j.getString("title")).find();JSONArray t=relevant?topics(j.getString("title")):new JSONArray();j.put("topics",t).put("relevant",relevant).put("uncertain",uncertain(j.getString("title"))).put("classifierVersion",2);p.topics=new int[t.length()];for(int k=0;k<t.length();k++)p.topics[k]=t.getInt(k);p.tier=!relevant?2:t.length()>0?0:1;news.add(p);}
     }
     public String fingerprint()throws Exception{return sha(raw.getJSONArray("market").toString()+raw.getJSONArray("news").toString()+coverage.toString());}
     public static final class Snapshot {
@@ -436,7 +471,12 @@ public final class ContextData {
         if(latest[0].length>0&&latest[1].length>0)s.values[15]=100*(latest[0][0]-latest[1][0])/Math.max(5,Math.abs(latest[0][0]));
         s.values[16]=s.values[10]*s.values[12]/100;
         List<News> visible=new ArrayList<>();Set<String> seenTitles=new HashSet<>();Map<String,double[]> bySource=new TreeMap<>();
-        for(News n:news)if(!n.available.isAfter(asof)&&!n.published.isAfter(asof)&&n.published.isAfter(asof.minusSeconds(NEWS_WINDOW_DAYS*86400L))){
+        // Same bounded, deterministic window as publicationView: every training
+        // origin and the live App therefore see an identically constructed input.
+        List<String> windowIds=new ArrayList<>();List<Instant> windowDates=new ArrayList<>();List<Integer> windowTiers=new ArrayList<>();
+        for(News n:news)if(inWindow(n.published,n.available,asof)){windowIds.add(n.json.getString("id"));windowDates.add(n.published);windowTiers.add(n.tier);}
+        Set<String> keep=selectIds(windowIds,windowDates,windowTiers);
+        for(News n:news)if(inWindow(n.published,n.available,asof)&&(keep==null||keep.contains(n.json.getString("id")))){
             String source=publisher(n.json.optString("source")),title=normalizedTitle(n.json.getString("title"),source);
             if(!seenTitles.add(source+":"+title))continue; // Each independent publisher contributes its own observation.
             double weight=Math.max(.25,Math.exp(-Duration.between(n.published,asof).toHours()/96.0));
