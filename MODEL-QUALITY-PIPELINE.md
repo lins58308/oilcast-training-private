@@ -75,9 +75,15 @@ means the pipeline is internally consistent, **not** that future forecasts are a
   financial or geopolitical headlines. Unrelated stories count toward news
   activity, but never falsely assert an oil supply/demand shock.
 - Historical feed metadata is not silently truncated after 90 days or after
-  5,000 news items. A hard safety capacity of **20,000** retained reports
-  currently prevents resource exhaustion; exceeding it fails the run rather
-  than deleting the oldest reports. This is **not an unlimited internet news
+  5,000 news items. The retained archive is bounded at **20,000** reports.
+  Reaching the bound no longer fails the run: the archive is compacted to
+  18,000 by a fixed, reported rule. Reports published within 56 days of the
+  newest report are never removed; among older ones general news goes
+  first, then oil/energy-relevant, then event reports, oldest first. Counts
+  are kept in `newsArchive` in the checkpoint and `result.json`, and earlier
+  immutable `training-state.json` release assets still hold the removed
+  reports. Compaction can lower the news-volume feature of old training
+  origins. This is **not an unlimited internet news
   crawler** and does not download copyrighted article bodies.
 - Every training origin computes its news features from the **preceding
   28 days of news already available at that point in time**, rather than
@@ -88,7 +94,12 @@ means the pipeline is internally consistent, **not** that future forecasts are a
   context window. Equalized publisher statistics, six oil-economy event
   categories, and total news volume are still used by both v6 and v7.
 - Each signed Android prediction payload contains only stories needed for
-  its current inference window (at most 5,000). A separate immutable
+  its current inference window (at most 5,000). A window holding more
+  is reduced by a fixed priority rule (event, then oil/energy-relevant,
+  then general; newest first) that training applies at every origin too,
+  and the reduction is reported in `newsSelection`. If the package would
+  still exceed 8 MB, the run retrains with a smaller window limit rather
+  than failing. A separate immutable
   `training-state.json` release asset and mutable `training-checkpoint`
   retain the complete dated news archive. Recovery refuses to substitute a
   truncated Android payload when full training state cannot be restored.

@@ -7,6 +7,16 @@ import java.util.*;
 
 /** CPU trainer using the same model source classes as Oilcast Android 3.3.5. */
 public final class CloudTrainer {
+    /** The official CPC page occasionally times out. A missed run leaves App
+     *  users with an ageing model, so retry briefly before giving up. */
+    private static List<OilData.Row> fetchOfficial()throws Exception{
+        Exception last=null;
+        for(int attempt=0;attempt<3;attempt++){
+            if(attempt>0){System.out.println("Official CPC source failed ("+last.getClass().getSimpleName()+"); retry "+attempt+" of 2");Thread.sleep(30_000L*attempt);}
+            try{return OilData.fetch();}catch(java.io.IOException|IllegalArgumentException e){last=e;}
+        }
+        throw last;
+    }
     public static void main(String[] args)throws Exception{
         Path root=Path.of(args[0]),out=Path.of(args[1]);boolean live=Boolean.parseBoolean(args[2]);
         Instant asOf=Instant.parse(args[3]);Path previous=Path.of(args[4]);String keyPath=args[5];
@@ -41,7 +51,7 @@ public final class CloudTrainer {
                     System.out.println("Official CPC archive backfilled: "+oldOfficial.size()
                         +" effective-price records; "+check.size()+" 20-year weekly observations");
                 }
-                List<OilData.Row> fetched=OilData.fetch();LocalDate day=OilData.today();
+                List<OilData.Row> fetched=fetchOfficial();LocalDate day=OilData.today();
                 fetched.removeIf(row->row.date.isAfter(OilData.nextMonday(day)));
                 if(OilData.weeklyThrough(fetched,OilData.monday(day)).size()<80)throw new IllegalArgumentException("CPC history is incomplete");
                 List<OilData.Row> retained=new ArrayList<>();for(OilData.Row row:rows)if(row.date.isBefore(fetched.get(0).date))retained.add(row);
@@ -57,15 +67,26 @@ public final class CloudTrainer {
         if(weekly.size()<80||!weekly.get(weekly.size()-1).date.equals(OilData.monday(day)))throw new IllegalArgumentException("Official data does not cover the current week; no model published");
         if(live && (weekly.size()<1300 || !weekly.get(0).date.isBefore(LocalDate.of(2000,1,1))))
             throw new IllegalStateException("Live publish blocked: 25+ years of authenticated CPC prices are required");
-        ContextData context=new ContextData(outside);int revision=old==null?1:old.getJSONObject("model").getInt("revision")+1;
-        String hash=ContextData.sha(OilData.fingerprint(weekly)+context.fingerprint()+day);
-        long started=System.nanoTime();JSONObject model=MultiLearner.train(weekly,context,revision,hash,asOf,progress);long millis=(System.nanoTime()-started)/1_000_000;
+        int revision=old==null?1:old.getJSONObject("model").getInt("revision")+1;
         JSONObject priorAccuracy=old==null?null:old.optJSONObject("cloudAccuracy");
         if(priorAccuracy==null&&old!=null)priorAccuracy=CloudAccuracy.update(null,old.getJSONObject("model"),rows,asOf);
-        JSONObject cloudAccuracy=CloudAccuracy.update(priorAccuracy,model,rows,asOf);
-        JSONObject publicContext=ContextData.publicationView(outside,asOf);
-        JSONObject payload=new JSONObject().put("schema",1).put("trainingNewsArchiveComplete",false).put("source",OilData.SOURCE).put("cpcSyncedAt",cpcSynced.toString()).put("rows",OilData.json(rows)).put("model",model).put("multisource",publicContext).put("sourceStates",ContextData.catalog(outside.optJSONObject("sources"))).put("cloudAccuracy",cloudAccuracy);
-        byte[] bytes=payload.toString().getBytes(StandardCharsets.UTF_8);if(bytes.length>CloudModelPackage.MAX_BYTES)throw new IllegalArgumentException("Model package exceeds limit");
+        // A full 28-day window of long headlines can exceed the signed package
+        // size. Instead of failing the run, retrain with a smaller window limit
+        // so training, the package and the App still use the same stories.
+        ContextData context;JSONObject model,cloudAccuracy,publicContext;byte[] bytes;long millis;int newsLimit=ContextData.MAX_PUBLIC_NEWS;
+        while(true){
+            context=new ContextData(outside,newsLimit);
+            String hash=ContextData.sha(OilData.fingerprint(weekly)+context.fingerprint()+day);
+            long started=System.nanoTime();model=MultiLearner.train(weekly,context,revision,hash,asOf,progress);millis=(System.nanoTime()-started)/1_000_000;
+            cloudAccuracy=CloudAccuracy.update(priorAccuracy,model,rows,asOf);
+            publicContext=ContextData.publicationView(outside,asOf,newsLimit);
+            JSONObject payload=new JSONObject().put("schema",1).put("trainingNewsArchiveComplete",false).put("source",OilData.SOURCE).put("cpcSyncedAt",cpcSynced.toString()).put("rows",OilData.json(rows)).put("model",model).put("multisource",publicContext).put("sourceStates",ContextData.catalog(outside.optJSONObject("sources"))).put("cloudAccuracy",cloudAccuracy);
+            bytes=payload.toString().getBytes(StandardCharsets.UTF_8);
+            if(bytes.length<=CloudModelPackage.MAX_BYTES)break;
+            if(newsLimit<=500)throw new IllegalArgumentException("Model package exceeds limit");
+            System.out.println("Model package is "+bytes.length+" bytes with a "+newsLimit+"-story window; retraining with a smaller window");
+            newsLimit=newsLimit*85/100;
+        }
         JSONObject manifest=new JSONObject().put("schema",1).put("demo",!live).put("algorithm",MultiLearner.VERSION).put("revision",revision).put("trainedAt",asOf.toString()).put("dataThrough",model.getString("trainedThrough")).put("targetDate",model.getString("targetDate")).put("payloadSha256",CloudModelPackage.sha(bytes)).put("payloadBytes",bytes.length).put("payloadFile","model.json");
         if(args.length>6&&!args[6].isEmpty())manifest.put("payloadUrl",args[6]);
         Files.write(out.resolve("model.json"),bytes);Files.writeString(out.resolve("manifest.json"),manifest.toString(2));
@@ -73,7 +94,7 @@ public final class CloudTrainer {
         JSONObject checkpoint=new JSONObject().put("cloudStateSchema",1).put("rows",OilData.json(rows)).put("multisource",outside).put("model",model).put("cloudAccuracy",cloudAccuracy);
         Files.writeString(out.resolve("checkpoint.json"),checkpoint.toString());
         Files.writeString(out.resolve("training-status.json"),new JSONObject().put("outcome","running").put("phase","publish").put("percent",95).put("updatedAt",Instant.now().toString()).toString());
-        JSONObject result=new JSONObject().put("algorithm",MultiLearner.VERSION).put("revision",revision).put("demo",!live).put("published",false).put("appConnected",false).put("cloudExecutionVerified",false).put("cpuTrainMillis",millis).put("modelBytes",bytes.length).put("weeklyRows",weekly.size()).put("priceHistoryFrom",weekly.get(0).date.toString()).put("priceHistoryThrough",weekly.get(weekly.size()-1).date.toString()).put("newsRows",context.newsSize()).put("publicNewsRows",publicContext.getJSONArray("news").length()).put("newsSelection",publicContext.getJSONObject("newsSelection")).put("marketRows",context.marketSize()).put("targetDate",model.getString("targetDate"));
+        JSONObject result=new JSONObject().put("algorithm",MultiLearner.VERSION).put("revision",revision).put("demo",!live).put("published",false).put("appConnected",false).put("cloudExecutionVerified",false).put("cpuTrainMillis",millis).put("modelBytes",bytes.length).put("weeklyRows",weekly.size()).put("priceHistoryFrom",weekly.get(0).date.toString()).put("priceHistoryThrough",weekly.get(weekly.size()-1).date.toString()).put("newsRows",context.newsSize()).put("publicNewsRows",publicContext.getJSONArray("news").length()).put("newsSelection",publicContext.getJSONObject("newsSelection")).put("newsArchive",outside.optJSONObject("newsArchive")).put("marketRows",context.marketSize()).put("targetDate",model.getString("targetDate"));
         Files.writeString(out.resolve("result.json"),result.toString(2));System.out.println(result.toString(2));
     }
 }
