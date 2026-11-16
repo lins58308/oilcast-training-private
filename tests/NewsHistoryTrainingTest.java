@@ -114,6 +114,31 @@ public final class NewsHistoryTrainingTest {
             ok(crowdedCloud.values[i]==crowdedApp.values[i],"crowded-window features are bit-identical on dimension "+i);
         ok(ContextData.publicationView(crowdedPublic,Instant.parse(now)).getJSONArray("news").toString().equals(crowdedPublic.getJSONArray("news").toString()),"selection is idempotent");
         ok(!ContextData.publicationView(full,Instant.parse(now)).getJSONObject("newsSelection").getBoolean("reduced"),"small windows are published unchanged");
+        // A window limit below 5,000 (used when the package would be too
+        // large) keeps cloud and App features identical as well.
+        JSONObject smallerPublic=ContextData.publicationView(crowdedFull,Instant.parse(now),3000);
+        ok(smallerPublic.getJSONArray("news").length()==3000&&smallerPublic.getJSONObject("newsSelection").getInt("limit")==3000,"package can carry a smaller explicit window");
+        ContextData.Snapshot smallerCloud=new ContextData(crowdedFull,3000).snapshot(Instant.parse(now));
+        ContextData.Snapshot smallerApp=new ContextData(smallerPublic).snapshot(Instant.parse(now));
+        for(int i=0;i<ContextData.DIM;i++)
+            ok(smallerCloud.values[i]==smallerApp.values[i],"reduced-limit features are bit-identical on dimension "+i);
+        // The archive is bounded by reported compaction, not by aborting training.
+        JSONArray huge=new JSONArray();
+        for(int i=0;i<20500;i++){
+            String title=i%5==0?"OPEC oil production cut update "+i:i%5==1?"Crude oil market note "+i:"Community event report "+i;
+            Instant when=Instant.parse("2025-01-01T00:00:00Z").plusSeconds(i*2700L);
+            huge.put(article(title,"https://www.bbc.com/news/huge-"+i,"BBC",when.toString(),when.plusSeconds(60).toString()));
+        }
+        JSONObject archiveStats=new JSONObject();
+        JSONArray compacted=ContextData.mergeNews(new JSONArray(),huge,archiveStats);
+        ok(compacted.length()==ContextData.ARCHIVE_TARGET,"oversized archive is compacted to its target instead of failing");
+        ok(archiveStats.getInt("evictedGeneral")==2500&&archiveStats.optInt("evictedRelevant")==0&&archiveStats.optInt("evictedEvent")==0,"only old general news is removed first, and it is counted");
+        Instant newestHuge=Instant.parse("2025-01-01T00:00:00Z").plusSeconds(20499*2700L);int recentKept=0,recentTotal=0;
+        for(int i=0;i<20500;i++)if(!Instant.parse("2025-01-01T00:00:00Z").plusSeconds(i*2700L).isBefore(newestHuge.minusSeconds(ContextData.ARCHIVE_PROTECT_DAYS*86400L)))recentTotal++;
+        for(int i=0;i<compacted.length();i++)if(!Instant.parse(compacted.getJSONObject(i).getString("publishedAt")).isBefore(newestHuge.minusSeconds(ContextData.ARCHIVE_PROTECT_DAYS*86400L)))recentKept++;
+        ok(recentKept==recentTotal&&recentTotal>0,"every story inside the protected recent window survives");
+        ok(ContextData.mergeNews(compacted,new JSONArray(),archiveStats).length()==ContextData.ARCHIVE_TARGET&&archiveStats.getInt("compactions")==1,"compaction is stable once below the limit");
+        new ContextData(ContextData.empty().put("news",compacted));
         ContextData.Snapshot beforePublished=ctx.snapshot(Instant.parse("2026-11-02T12:00:00Z"));
         ok(beforePublished.count==3,"future news cannot leak into historical prediction");
         // A headline discovered long after it was written cannot be treated
